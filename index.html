@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+    <script>
+      window.addEventListener('error', function(event) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.top = '0';
+        errorDiv.style.left = '0';
+        errorDiv.style.width = '105%';
+        errorDiv.style.backgroundColor = '#fee2e2';
+        errorDiv.style.color = '#991b1b';
+        errorDiv.style.padding = '1.5rem';
+        errorDiv.style.zIndex = '9999999';
+        errorDiv.style.fontFamily = 'monospace';
+        errorDiv.style.fontSize = '14px';
+        errorDiv.style.overflow = 'auto';
+        errorDiv.style.maxHeight = '90vh';
+        errorDiv.style.borderBottom = '5px solid #ef4444';
+        errorDiv.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+        errorDiv.innerHTML = '<strong>RUNTIME ERROR:</strong><br><pre style="white-space: pre-wrap; margin-top: 10px;">' + (event.error ? event.error.stack : event.message) + '</pre>';
+        document.body.appendChild(errorDiv);
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.top = '0';
+        errorDiv.style.left = '0';
+        errorDiv.style.width = '105%';
+        errorDiv.style.backgroundColor = '#fef3c7';
+        errorDiv.style.color = '#92400e';
+        errorDiv.style.padding = '1.5rem';
+        errorDiv.style.zIndex = '9999999';
+        errorDiv.style.fontFamily = 'monospace';
+        errorDiv.style.fontSize = '14px';
+        errorDiv.style.overflow = 'auto';
+        errorDiv.style.maxHeight = '90vh';
+        errorDiv.style.borderBottom = '5px solid #f59e0b';
+        errorDiv.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)';
+        errorDiv.innerHTML = '<strong>UNHANDLED REJECTION:</strong><br><pre style="white-space: pre-wrap; margin-top: 10px;">' + (event.reason ? event.reason.stack || event.reason : 'Unknown reason') + '</pre>';
+        document.body.appendChild(errorDiv);
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
