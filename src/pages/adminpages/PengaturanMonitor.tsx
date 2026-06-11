@@ -150,6 +150,37 @@ export default function PengaturanMonitor({
     }));
   };
 
+  // Safe parsing of slideImages array with default fallback
+  const slideImages = localSettings.slideImages && localSettings.slideImages.length > 0
+    ? localSettings.slideImages
+    : [""];
+
+  const handleSlideImageChange = (index: number, value: string) => {
+    const updated = [...slideImages];
+    updated[index] = value;
+    setLocalSettings(prev => ({
+      ...prev,
+      slideImages: updated,
+    }));
+  };
+
+  const handleAddSlideImage = () => {
+    if (slideImages.length >= 10) return;
+    const updated = [...slideImages, ""];
+    setLocalSettings(prev => ({
+      ...prev,
+      slideImages: updated,
+    }));
+  };
+
+  const handleRemoveSlideImage = (index: number) => {
+    const updated = slideImages.filter((_, idx) => idx !== index);
+    setLocalSettings(prev => ({
+      ...prev,
+      slideImages: updated.length > 0 ? updated : [""],
+    }));
+  };
+
   const handleMonitorInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -628,6 +659,54 @@ export default function PengaturanMonitor({
                   )}
                 </div>
               )}
+
+              {/* Slide Gambar Pendukung (Mode Gambar / Hemat RAM TV) */}
+              <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl space-y-3 mt-4" id="image-slideshow-settings">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2 border-b border-slate-200">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">Daftar Slide Gambar Pendukung (Mode TV Gambar)</span>
+                    <span className="text-[10px] text-slate-400">Rasio ideal: 16:9 (e.g. 1920x1080 px). Mendukung tautan gambar .jpg, .png, .webp atau link umum.</span>
+                  </div>
+                  <span className="text-[10px] bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded font-black mt-1 sm:mt-0">{slideImages.length} URL Terdaftar</span>
+                </div>
+
+                <div className="space-y-2">
+                  {slideImages.map((imgUrl, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-slate-400 w-5">{idx + 1}.</span>
+                      <input
+                        type="text"
+                        value={imgUrl}
+                        onChange={(e) => handleSlideImageChange(idx, e.target.value)}
+                        className="flex-1 bg-white border border-slate-300 text-xs rounded-lg p-2 font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                        placeholder="Masukkan URL Gambar (e.g. https://.../gambar.jpg)"
+                      />
+                      {imgUrl && (
+                        <div className="w-8 h-6 rounded border border-slate-300 bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${imgUrl})` }} title="Preview Gambar" />
+                      )}
+                      {slideImages.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSlideImage(idx)}
+                          className="text-red-500 hover:text-red-700 text-xs p-1 font-semibold"
+                        >
+                          Hapus
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {slideImages.length < 10 && (
+                  <button
+                    type="button"
+                    onClick={handleAddSlideImage}
+                    className="py-1 px-3 bg-white border border-slate-300 text-slate-700 rounded text-xs font-bold hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    + Tambah Gambar Slide Lainnya
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

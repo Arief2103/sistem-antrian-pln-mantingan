@@ -33,6 +33,11 @@ export const DEFAULT_MONITOR_SETTINGS: MonitorSettings = {
   layoutMode: "normal",
   videoVolume: 50,
   voiceVolume: 80,
+  slideImages: [
+    "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?q=80&w=1200&auto=format&fit=crop", // Ketenagalistrikan / Energy
+    "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1200&auto=format&fit=crop", // Office / Customer service
+    "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1200&auto=format&fit=crop"  // Business PLN
+  ]
 };
 
 export default function App() {
@@ -822,7 +827,25 @@ export default function App() {
       });
   };
 
+  const isDirectDisplayURL = typeof window !== "undefined" && (
+    window.location.search.includes("mode=display") || 
+    window.location.search.includes("tv=") || 
+    window.location.search.includes("lite=true") ||
+    window.location.pathname.endsWith("/display")
+  );
 
+  if (isDirectDisplayURL) {
+    return (
+      <div className="w-screen h-screen bg-slate-950 overflow-hidden relative select-none animate-fade-in" id="direct-tv-canvas">
+        <DisplayMonitor
+          settings={monitorSettings}
+          loketList={loketList}
+          activeQueues={queues}
+          isFullscreen={true}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 antialiased" id="main-applet-container">
@@ -830,19 +853,12 @@ export default function App() {
       {/* If TV Fullscreen Mode is selected */}
       {isFullscreenDisplay ? (
         <div className="w-screen h-screen bg-slate-950 overflow-hidden relative select-none" id="fullscreen-tv-canvas">
-          <button
-            onClick={() => setIsFullscreenDisplay(false)}
-            className="absolute top-4 left-4 z-50 bg-slate-900/40 hover:bg-slate-900/90 border border-white/10 text-[10px] px-3 py-1.5 hover:scale-105 font-bold rounded-xl text-slate-400 hover:text-white shadow-lg cursor-pointer transition-all uppercase tracking-wider backdrop-blur-sm opacity-40 hover:opacity-100"
-            id="btn-quit-fullscreen-tv"
-          >
-            ← Keluar Fullscreen
-          </button>
-          
           <DisplayMonitor
             settings={monitorSettings}
             loketList={loketList}
             activeQueues={queues}
             isFullscreen={true}
+            onExitFullscreen={() => setIsFullscreenDisplay(false)}
           />
         </div>
       ) : !currentUser ? (

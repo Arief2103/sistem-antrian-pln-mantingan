@@ -94,6 +94,7 @@ export interface MonitorSettings {
   colorClock?: string; // Digit text color for the clock (e.g. "#00D2FF")
   colorClockTitle?: string; // Subtitle text color (e.g., "#FBBF24")
   colorDayDate?: string; // Day Date text color (e.g. "#FFFFFF")
+  slideImages?: string[]; // Up to 10 custom slide images for "Mode Gambar / Saver"
 }
 
 // Backend Server Types

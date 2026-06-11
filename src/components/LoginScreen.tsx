@@ -159,6 +159,23 @@ export default function LoginScreen({ usersList, onLoginSuccess, onSelectDisplay
             >
               <Monitor className="w-3.5 h-3.5" /> LIHAT TAMPILAN MONITOR
             </button>
+
+            {/* TV direct URL support block
+            <div className="p-3 bg-amber-50/75 rounded-2xl border border-amber-200 text-left space-y-1 mt-1" id="tv-direct-guidelines">
+              <div className="flex items-center gap-1.5 font-bold text-[10px] text-amber-800 uppercase tracking-wider leading-none">
+                <Cpu className="w-3.5 h-3.5 text-amber-650" />
+                <span>Link Khusus TV Lobby (Antisipasi Hang)</span>
+              </div>
+              <p className="text-[10px] leading-relaxed text-amber-900/95 font-sans font-medium">
+                Gunakan alamat ini pada browser Smart TV Anda agar **ringan, otomatis, & bebas macet**:
+              </p>
+              <div className="p-1.5 bg-white/90 rounded-lg text-center text-[10px] font-mono font-black select-all border border-amber-200/60 text-slate-950 break-all select-all">
+                {typeof window !== "undefined" ? `${window.location.origin}/?tv=1` : "domain-anda/?tv=1"}
+              </div>
+              <p className="text-[9px] text-amber-800/80 leading-normal">
+                💡 **Hemat RAM**: Versi ini menonaktifkan video decoder berat yang sering menyebabkan Smart TV TV Stick lag atau hang.
+              </p>
+            </div> */}
           </div>
         </form>
 

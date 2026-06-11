@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { MonitorSettings, LoketItem, QueueItem } from "../types";
-import { Shield, Zap, Sparkles } from "lucide-react";
+import { Shield, Zap, Sparkles, Cpu, Image, Tv, Video } from "lucide-react";
 import { getVideoBlob } from "../lib/VideoDB";
 
 // Helper to spell Indonesian numbers dynamically and correctly (terbilang format)
@@ -147,6 +147,7 @@ interface DisplayMonitorProps {
   loketList: LoketItem[];
   activeQueues: QueueItem[];
   isFullscreen?: boolean;
+  onExitFullscreen?: () => void;
 }
 
 export default function DisplayMonitor({
@@ -154,6 +155,7 @@ export default function DisplayMonitor({
   loketList,
   activeQueues,
   isFullscreen = false,
+  onExitFullscreen,
 }: DisplayMonitorProps) {
   const [time, setTime] = useState(new Date());
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -161,6 +163,92 @@ export default function DisplayMonitor({
   const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
   const lastCalledId = useRef<string | null>(null);
   const spokenCalls = useRef<Set<string>>(new Set());
+
+  // Split ratio for Left (Video) and Right (Cards) columns
+  const [layoutWidth, setLayoutWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("pln_tv_layout_width");
+      return saved ? parseInt(saved, 10) : 67;
+    } catch {
+      return 67;
+    }
+  });
+
+  // Scale format for videos / images to eliminate black bars
+  const [videoFit, setVideoFit] = useState<"contain" | "cover" | "fill">(() => {
+    try {
+      const saved = localStorage.getItem("pln_tv_video_fit");
+      return (saved as "contain" | "cover" | "fill") || "contain";
+    } catch {
+      return "contain";
+    }
+  });
+
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const cycleLayoutWidth = () => {
+    setLayoutWidth((prev) => {
+      let next = 67;
+      if (prev === 67) next = 72;
+      else if (prev === 72) next = 78;
+      else if (prev === 78) next = 84;
+      else next = 67;
+
+      try {
+        localStorage.setItem("pln_tv_layout_width", next.toString());
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
+  const cycleVideoFit = () => {
+    setVideoFit((prev) => {
+      let next: "contain" | "cover" | "fill" = "contain";
+      if (prev === "contain") next = "cover";
+      else if (prev === "cover") next = "fill";
+      else next = "contain";
+
+      try {
+        localStorage.setItem("pln_tv_video_fit", next);
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
+  // Memory/CPU Saver Mode to prevent low-spec TV browsers from hanging due to video decoding
+  const [isSaverMode, setIsSaverMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("pln_tv_saver_mode");
+      return saved === "true" || window.location.search.includes("saver=true") || window.location.search.includes("lite=true");
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSaverMode = () => {
+    setIsSaverMode((prev) => {
+      const newVal = !prev;
+      try {
+        localStorage.setItem("pln_tv_saver_mode", newVal ? "true" : "false");
+      } catch (e) {
+        console.error(e);
+      }
+      return newVal;
+    });
+  };
 
   // Load custom video blob from IndexedDB if selected
   useEffect(() => {
@@ -276,10 +364,19 @@ export default function DisplayMonitor({
     },
   ];
 
-  // Rotate slides every 10 seconds
+  // Up to 10 custom sliding images for TV Image Mode / RAM Saver
+  const activeSlideImages = settings.slideImages && settings.slideImages.filter(url => url.trim().length > 0).length > 0
+    ? settings.slideImages.filter(url => url.trim().length > 0)
+    : [
+        "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?q=80&w=1200&auto=format&fit=crop", // Ketenagalistrikan / Energy
+        "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1200&auto=format&fit=crop", // Customer service/office
+        "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1200&auto=format&fit=crop"  // Business PLN
+      ];
+
+  // Rotate slides every 10 seconds (up to 3600 to serve as a clean common multiple for any array size up to 10)
   useEffect(() => {
     const slideInterval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
+      setCurrentSlide((prev) => (prev + 1) % 3600);
     }, 10000);
     return () => clearInterval(slideInterval);
   }, []);
@@ -429,7 +526,8 @@ export default function DisplayMonitor({
               const vol = settings.videoVolume !== undefined ? settings.videoVolume : 50;
               e.currentTarget.volume = vol / 100;
             }}
-            className="absolute inset-0 w-full h-full object-contain bg-slate-950"
+            className="absolute inset-0 w-full h-full bg-slate-950"
+            style={{ objectFit: videoFit }}
           />
         ) : embedUrl ? (
           <iframe
@@ -471,8 +569,8 @@ export default function DisplayMonitor({
     >
       {/* 1. Header/Navbar (PT PLN (Persero) ULP Mantingan with Logo) */}
       <div 
-        className={`flex items-center justify-between border-b relative z-10 ${
-          isFullscreen ? "px-8 py-4 px" : "px-6 py-3"
+        className={`flex items-center justify-between border-b relative z-10 group ${
+          isFullscreen ? "px-8 py-4" : "px-6 py-3"
         }`}
         style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: colorHeaderLeft }}
         id="tv-header"
@@ -510,32 +608,141 @@ export default function DisplayMonitor({
             </p>
           </div>
         </div>
+
+        {/* TV Display Configuration controls (Scaling, Width, RAM optimizer) */}
+        <div className="flex flex-wrap items-center gap-2 opacity-0 group-hover:opacity-100 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300" id="tv-header-controls">
+          {/* 1. Video/Image Scale Control */}
+          <button
+            onClick={cycleVideoFit}
+            className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-extrabold uppercase rounded-lg bg-white/5 hover:bg-white/10 text-cyan-200 hover:text-cyan-100 border border-white/10 shrink-0 outline-none select-none transition-all"
+            title="Mengatur skala video atau gambar agar penuh tanpa sisa warna hitam"
+          >
+            <span>SKALA: </span>
+            <span className="text-white font-black bg-white/10 px-1.5 py-0.5 rounded">
+              {videoFit === "contain" ? "PROPORSIONAL" : videoFit === "cover" ? "POTONG PENUH" : "PAS PENUH"}
+            </span>
+          </button>
+
+          {/* 2. Video Column Width Split */}
+          <button
+            onClick={cycleLayoutWidth}
+            className="cursor-pointer flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-extrabold uppercase rounded-lg bg-white/5 hover:bg-white/10 text-sky-200 hover:text-sky-100 border border-white/10 shrink-0 outline-none select-none transition-all"
+            title="Mengatur lebar kolom video / memperkecil kolom kartu antrean"
+          >
+            <span>LEBAR MEDIA: </span>
+            <span className="text-white font-black bg-white/10 px-1.5 py-0.5 rounded">
+              {layoutWidth}%
+            </span>
+          </button>
+
+          {/* 3. Mode TV: Video vs Gambar Slide */}
+          <button
+            onClick={toggleSaverMode}
+            className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all border shrink-0 outline-none select-none ${
+              isSaverMode
+                ? "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30 font-bold"
+                : "bg-white/5 hover:bg-white/10 text-white/95 border-white/10"
+            }`}
+            title={isSaverMode ? "Ubah ke Mode Putar Video Utama" : "Ubah ke Mode Slide Gambar (Ringan RAM / TV Hemat Hang)"}
+          >
+            {isSaverMode ? (
+              <Image className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            ) : (
+              <Tv className="w-3.5 h-3.5 text-sky-305 text-sky-300 shrink-0" />
+            )}
+            <span>MODE TV: {isSaverMode ? "TAMPIL GAMBAR 🖼️" : "PUTAR VIDEO 📺"}</span>
+          </button>
+        </div>
       </div>
 
-      {/* 2. Main Layout Content (Left is dominant video, Right is clock and 2 stacked cards) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 p-5 flex-1 w-full items-stretch" id="tv-layout-grid">
+      {/* 2. Main Layout Content (Left is custom-width video/slide container, Right is clock and cards) */}
+      <div className="flex flex-col lg:flex-row gap-5 p-5 flex-1 w-full items-stretch" id="tv-layout-flex">
         
-        {/* Left Column: Very dominant video container (occupied 8/12 - 2/3 of space) */}
-        <div className="lg:col-span-8 flex flex-col justify-between" id="tv-video-dominant-column">
+        {/* Left Column: Custom-width configuration video container */}
+        <div 
+          className="flex flex-col justify-between transition-all duration-300 w-full shrink-0" 
+          id="tv-video-dominant-column"
+          style={isDesktop ? { width: `${layoutWidth}%`, flex: `0 0 ${layoutWidth}%` } : undefined}
+        >
           <div className={`w-full h-full relative rounded-2xl overflow-hidden shadow-lg border border-white/5 bg-slate-100/5 flex flex-col justify-between ${
             isFullscreen ? "min-h-[300px]" : "min-h-[440px]"
           }`}>
-            
-            {settings.videoSourceType === "local" && localVideoUrl ? (
-              <video
-                key={localVideoUrl}
-                src={localVideoUrl}
-                autoPlay
-                loop
-                playsInline
-                onPlay={(e) => {
-                  const vol = settings.videoVolume !== undefined ? settings.videoVolume : 50;
-                  e.currentTarget.volume = vol / 100;
-                }}
-                className="absolute inset-0 w-full h-full object-contain bg-slate-950 rounded-xl"
-              />
-            ) : settings.videoSourceType !== "local" && (settings.videoUrls?.length || settings.videoUrl) ? (
-              (() => {
+                 {(() => {
+              const isNoVideo = 
+                (settings.videoSourceType === "local" && !localVideoUrl) ||
+                (settings.videoSourceType !== "local" && !settings.videoUrl && (!settings.videoUrls || settings.videoUrls.length === 0));
+
+              const showImageSlideshow = isSaverMode || isNoVideo;
+
+              if (showImageSlideshow) {
+                return (
+                  // Mode Tampilan Gambar / Slide Media 16:9 (Zero CPU Video Decoding / Zero Memory Leak)
+                  <div className="absolute inset-0 w-full h-full bg-[#020b12] rounded-xl overflow-hidden flex flex-col justify-between" id="tv-image-slideshow-container">
+                    {/* Image display with active transition */}
+                    <img
+                      key={currentSlide % activeSlideImages.length}
+                      src={activeSlideImages[currentSlide % activeSlideImages.length]}
+                      alt="Slide Monitor"
+                      className="absolute inset-0 w-full h-full select-none animate-fade-in"
+                      referrerPolicy="no-referrer"
+                      style={{ objectFit: videoFit }}
+                    />
+
+                    {/* Slight premium bottom gradient overlay for readability of footer info */}
+                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#020b12] via-black/30 to-transparent pointer-events-none z-10" />
+
+                    {/* Title badge or corner tag */}
+                    {/* <div className="absolute top-5 left-5 z-20 flex flex-col gap-2">
+                      <div className="inline-flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase px-3 py-1.5 bg-black/70 backdrop-blur-md border border-white/10 rounded-full shadow-lg text-emerald-400">
+                        <Image className="w-3.5 h-3.5 text-emerald-400 animate-pulse animate-duration-1000" />
+                        <span>Mode Gambar {isSaverMode ? "(Hemat Energi/RAM)" : "(Otomatis: Video Off)"}</span>
+                      </div>
+                    </div> */}
+
+                    {/* Subinfo block or text overlay at the bottom */}
+                    <div className="absolute bottom-5 inset-x-5 z-20 flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4">
+                      {/* <div className="bg-black/70 backdrop-blur-md px-3.5 py-1.5 border border-white/10 rounded-xl flex items-center gap-1.5">
+                        <span className="text-[10px] text-white/95 font-black uppercase tracking-wider">
+                          Slide { (currentSlide % activeSlideImages.length) + 1 } dari { activeSlideImages.length } • Auto-Slide
+                        </span>
+                      </div> */}
+
+                      {/* Indicator dots for navigation */}
+                      <div className="flex gap-2 bg-black/75 backdrop-blur-md px-3 py-2 rounded-full border border-white/10 shadow-lg">
+                        {activeSlideImages.map((_, i) => (
+                          <button
+                            key={i}
+                            className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                              i === (currentSlide % activeSlideImages.length) ? "w-6 bg-emerald-400" : "w-2 bg-white/25 hover:bg-white/40"
+                            }`}
+                            onClick={() => setCurrentSlide(i)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (settings.videoSourceType === "local" && localVideoUrl) {
+                return (
+                  <video
+                    key={localVideoUrl}
+                    src={localVideoUrl}
+                    autoPlay
+                    loop
+                    playsInline
+                    onPlay={(e) => {
+                      const vol = settings.videoVolume !== undefined ? settings.videoVolume : 50;
+                      e.currentTarget.volume = vol / 100;
+                    }}
+                    className="absolute inset-0 w-full h-full bg-slate-950 rounded-xl"
+                    style={{ objectFit: videoFit }}
+                  />
+                );
+              }
+
+              if (settings.videoSourceType !== "local" && (settings.videoUrls?.length || settings.videoUrl)) {
                 const embedUrl = getEmbedUrlForPlaylist();
                 if (embedUrl) {
                   return (
@@ -556,47 +763,19 @@ export default function DisplayMonitor({
                     />
                   );
                 }
-                return null;
-              })()
-            ) : (
-              <div className="p-8 flex-1 flex flex-col justify-between z-10 bg-slate-950 rounded-xl">
-                <div>
-                  <div className="inline-flex items-center gap-2 text-white/50 text-[10px] font-bold tracking-widest uppercase mb-4">
-                    Profil Edukasi Pelanggan
-                  </div>
-                  
-                  <div className="flex items-start gap-4 mt-2">
-                    <div className="p-4 bg-white/10 rounded-2xl shrink-0">
-                      {slides[currentSlide].icon}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black uppercase tracking-tight text-white leading-snug">
-                        {slides[currentSlide].title}
-                      </h3>
-                      <p className="text-sm text-white/80 mt-2 leading-relaxed">
-                        {slides[currentSlide].description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              }
 
-                {/* Slides indicators dots */}
-                <div className="flex gap-2 mt-4 self-end">
-                  {slides.map((_, i) => (
-                    <button
-                      key={i}
-                      className={`h-2 rounded-full transition-all duration-300 ${i === currentSlide ? "w-6 bg-white" : "w-2 bg-white/20"}`}
-                      onClick={() => setCurrentSlide(i)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+              return null;
+            })()}
           </div>
         </div>
 
         {/* Right Column: Clock Widget (top) + 2 Stacked Calling Cards (middle & bottom) */}
-        <div className="lg:col-span-4 flex flex-col gap-4 justify-between" id="tv-right-column">
+        <div 
+          className="flex flex-col gap-4 justify-between transition-all duration-300 w-full" 
+          id="tv-right-column"
+          style={isDesktop ? { width: `${100 - layoutWidth}%`, flex: `1 1 ${100 - layoutWidth}%` } : undefined}
+        >
           
           {/* A. Clock widget at the top */}
           <div className={`bg-[#001726]/85 border border-white/10 rounded-2xl flex flex-col justify-center items-center text-center shadow-lg relative shrink-0 ${
@@ -775,7 +954,7 @@ export default function DisplayMonitor({
           {textBottomLabel}
         </div>
 
-        <div className="whitespace-nowrap overflow-hidden inline-block w-full pl-32 relative">
+        <div className="whitespace-nowrap overflow-hidden inline-block w-full pl-32 pr-28 relative">
           <div 
             className="inline-block animate-[marquee_35s_linear_infinite] pl-[5%] uppercase tracking-wide font-extrabold"
             style={{ color: colorBottomText }}
@@ -783,6 +962,22 @@ export default function DisplayMonitor({
             {settings.runningText || "SELAMAT DATANG DI PLN ULP MANTINGAN - PELAYANAN BEBAS PUNGLI JANGAN BERI TIP KEPADA PETUGAS KAMI - LAPORKAN DI NOMOR GANGGUAN 123 ATAS HALAMAN LAINNYA."}
           </div>
         </div>
+
+        {onExitFullscreen && (
+          <button
+            onClick={onExitFullscreen}
+            className="absolute right-0 top-0 bottom-0 px-4 z-40 flex items-center justify-center text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-black/10 border-l transition-all select-none opacity-30 hover:opacity-100"
+            style={{ 
+              backgroundColor: colorBottomBg,
+              color: colorBottomText,
+              borderColor: "rgba(0,0,0,0.12)"
+            }}
+            title="Keluar Layar Penuh"
+            id="tv-exit-fullscreen-footer-btn"
+          >
+            ✖ Keluar
+          </button>
+        )}
       </div>
 
       <style>{`
