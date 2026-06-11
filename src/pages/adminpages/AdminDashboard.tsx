@@ -56,6 +56,7 @@ interface AdminDashboardProps {
   onLogout: () => void;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (isOpen: boolean) => void;
+  onDeleteQueue?: (id: string) => void;
 }
 
 export default function AdminDashboard({
@@ -75,6 +76,7 @@ export default function AdminDashboard({
   onLogout,
   isSidebarOpen,
   setIsSidebarOpen,
+  onDeleteQueue,
 }: AdminDashboardProps) {
   // Navigation active tab managed in unified flat sidebar
   const [activeTab, setActiveTab] = useState<"dashboard" | "kiosk" | "tv" | "loket" | "monitor" | "print" | "users" | "rekap">("dashboard");
@@ -260,7 +262,7 @@ export default function AdminDashboard({
                 <div className="bg-[#bce4fa] text-[#1e3a8a] text-sm font-bold p-3 px-4 rounded mb-5 select-none font-mono" id="repl-date-banner-g1">
                   Tanggal: {(() => {
                     const now = new Date();
-                    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                    return `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
                   })()}
                 </div>
 
@@ -405,7 +407,15 @@ export default function AdminDashboard({
                                 <td className="p-3 font-semibold text-slate-800 border-r border-slate-150">
                                   {row.textB} antrean
                                 </td>
-                                <td className="p-3 font-mono text-slate-600">{row.date}</td>
+                                <td className="p-3 font-mono text-slate-600">
+                                  {(() => {
+                                    if (row.date && /^\d{4}-\d{2}-\d{2}$/.test(row.date)) {
+                                      const [yyyy, mm, dd] = row.date.split("-");
+                                      return `${dd}/${mm}/${yyyy}`;
+                                    }
+                                    return row.date;
+                                  })()}
+                                </td>
                               </tr>
                             ))
                           ) : (
@@ -472,10 +482,6 @@ export default function AdminDashboard({
             {activeTab === "tv" && (
               <div className="space-y-6" id="panel-tv-monitor">
                 <div className="bg-emerald-50 text-emerald-950 p-5 rounded border border-emerald-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <h3 className="font-extrabold text-sm uppercase">Layar TV Display Suara Antrean</h3>
-                    <p className="text-xs text-emerald-850 mt-1">Layar Display TV dengan speaker panggilan Text-to-Speech otomatis berbahasa Indonesia formal.</p>
-                  </div>
                   <button
                     onClick={() => setIsFullscreenDisplay(true)}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded border border-emerald-500 cursor-pointer shadow-xs transition-colors"
@@ -496,8 +502,7 @@ export default function AdminDashboard({
             {activeTab === "loket" && (
               <div className="space-y-6">
                 <div className="p-4 bg-violet-50 text-violet-955 rounded border border-violet-200">
-                  <h3 className="font-extrabold text-sm uppercase">Pengaturan Meja Pelayanan Loket</h3>
-                  <p className="text-xs text-violet-850 mt-1">Konfigurasikan status keaktifan loket desk serta relasi nama kategori antrean.</p>
+                  <h3 className="font-extrabold text-sm uppercase">Pengaturan Nama Pelayanan Loket</h3>
                 </div>
                 <SetelanLoket loketList={loketList} onUpdateLoket={onUpdateLoket} />
               </div>
@@ -520,14 +525,16 @@ export default function AdminDashboard({
 
             {/* TAB: REKAP DATA PELANGGAN */}
             {activeTab === "rekap" && (
-              <RekapDataPelanggan queues={queues} />
+              <RekapDataPelanggan queues={queues} onDeleteQueue={onDeleteQueue} />
             )}
 
           </div>
 
           {/* Simple crisp system credentials footer matching the requested theme */}
-          <div className="mt-8 pt-4 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center text-[10px] text-slate-400 font-bold gap-2 select-none uppercase tracking-wider">
-            <span>SISTEM ANTRIAN PELANGGAN • PT PLN (PERSERO) ULP MANTINGAN</span>
+          <div className="mt-8 pt-4 border-t border-slate-200 flex justify-center items-center text-[10px] text-slate-400 font-bold gap-2 select-none uppercase tracking-wider">
+            <span className="text-center">
+              @2026 PT PLN (PERSERO) ULP MANTINGAN - SISTEM ANTRIAN PELANGGAN
+            </span>
           </div>
 
         </main>

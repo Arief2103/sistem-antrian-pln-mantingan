@@ -157,11 +157,8 @@ export default function PengaturanPrinter({
       
       <div className="border-b pb-4 mb-6 flex justify-between items-center">
         <h3 className="font-bold text-slate-800 text-sm tracking-wide">
-          Setelan Cetak Struk Kiosk (Thermal POS)
+          Setelan Cetak Struk Antrian
         </h3>
-        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200 font-medium">
-          Standar ESC/POS
-        </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

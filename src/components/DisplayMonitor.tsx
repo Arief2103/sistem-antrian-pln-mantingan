@@ -33,6 +33,27 @@ function convertNumberToIndonesianSpelling(n: number): string {
   return getIndonesianTerbilang(n).replace(/\s+/g, " ").trim();
 }
 
+function formatClock(d: Date, template?: string): string {
+  const pad = (num: number) => String(num).padStart(2, "0");
+  const hh = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+
+  switch (template) {
+    case "HH:mm:ss":
+      return `${hh}:${mm}:${ss}`;
+    case "HH.mm":
+      return `${hh}.${mm}`;
+    case "HH:mm":
+      return `${hh}:${mm}`;
+    case "HH.mm WIB":
+      return `${hh}.${mm} WIB`;
+    case "HH.mm.ss":
+    default:
+      return `${hh}.${mm}.${ss}`;
+  }
+}
+
 const muteVideos = () => {
   // Mute and Pause all local HTML5 videos
   const localVideos = document.querySelectorAll("video");
@@ -292,140 +313,7 @@ export default function DisplayMonitor({
     return new Date(q.createdAt).toDateString() === todayStr;
   });
 
-  // Autoplay voice announcements
-  useEffect(() => {
-    const callingQueues = todayQueues.filter((q) => q.status === "calling");
-
-    if (callingQueues.length > 0) {
-      // Find calling queues that haven't been spoken yet (unique based on id and calledAt timestamp)
-      const unspokenQueues = callingQueues.filter((q) => {
-        if (!q.calledAt) return false;
-        const key = `${q.id}-${q.calledAt}`;
-        
-        // If already spoken in this session, skip
-        if (spokenCalls.current.has(key)) return false;
-
-        // If the calling event is stale (older than 20 seconds), we treat it as already spoken
-        // This avoids blaring old queues immediately when opening/refreshing the TV display tab
-        const calledTime = new Date(q.calledAt).getTime();
-        const ageInSeconds = (Date.now() - calledTime) / 1000;
-        if (ageInSeconds > 20) {
-          spokenCalls.current.add(key); // Register so we don't recalculate
-          return false;
-        }
-
-        return true;
-      });
-
-      if (unspokenQueues.length > 0) {
-        // Sort unspoken calling queues by calledAt ascending to get the absolute newest call
-        const newestUnspoken = [...unspokenQueues].sort((a, b) => {
-          const timeA = a.calledAt ? new Date(a.calledAt).getTime() : 0;
-          const timeB = b.calledAt ? new Date(b.calledAt).getTime() : 0;
-          return timeA - timeB;
-        })[unspokenQueues.length - 1];
-
-        if (newestUnspoken && newestUnspoken.calledAt) {
-          const key = `${newestUnspoken.id}-${newestUnspoken.calledAt}`;
-          spokenCalls.current.add(key);
-          lastCalledId.current = newestUnspoken.id;
-          if ("speechSynthesis" in window) {
-            triggerVoiceAnnouncement(newestUnspoken);
-          }
-        }
-      }
-    }
-  }, [todayQueues]);
-
-  const triggerVoiceAnnouncement = (queue: QueueItem) => {
-    // Generate standard Indonesian word-by-word spelled number instead of splitting individual digit chars
-    const spokenNumber = convertNumberToIndonesianSpelling(queue.number);
-    const counterName = queue.loketName || "Loket Petugas";
-    // Indonesian formal call text pattern (separated by dots for natural system pauses)
-    const textToSpeak = `Nomor antrean ${queue.prefix} ... ${spokenNumber} ... silakan menuju ke ${counterName}`;
-    
-    // Resolve custom active volumes
-    const videoVol = settings.videoVolume !== undefined ? settings.videoVolume : 50;
-    const voiceVol = settings.voiceVolume !== undefined ? settings.voiceVolume : 80;
-    const voiceVolNormalized = voiceVol / 100;
-
-    // Mute all videos before starting announcements/chimes
-    muteVideos();
-
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const playChimeTone = (freq: number, start: number, duration: number) => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.setValueAtTime(freq, start);
-        gain.gain.setValueAtTime(0.35 * voiceVolNormalized, start); // Respect custom voice volume scale for chime
-        gain.gain.exponentialRampToValueAtTime(0.01 * voiceVolNormalized, start + duration);
-        osc.start(start);
-        osc.stop(start + duration);
-      };
-
-      playChimeTone(523.25, audioCtx.currentTime, 0.25); // C5
-      playChimeTone(659.25, audioCtx.currentTime + 0.12, 0.25); // E5
-      playChimeTone(783.99, audioCtx.currentTime + 0.24, 0.4); // G5
-
-      setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.lang = "id-ID";
-        utterance.rate = 0.76; // Slightly slower for more natural and articulate Indonesian calling pronunciation
-        utterance.pitch = 1.05; // Slightly elevated pitch to cut through potential background noise
-        utterance.volume = voiceVolNormalized; // Applied custom voice volume scale
-        
-        const voices = window.speechSynthesis.getVoices();
-        // Priority 1: Google Indonesian Voice (frequently clearer & louder in browser runtime)
-        // Priority 2: Standard local ID voice
-        const indonesianVoice = voices.find((v) => v.name.includes("Google") && v.lang.startsWith("id"))
-          || voices.find((v) => v.lang.startsWith("id"));
-
-        if (indonesianVoice) {
-          utterance.voice = indonesianVoice;
-        }
-
-        utterance.onend = () => {
-          unmuteVideos(videoVol);
-        };
-        utterance.onerror = () => {
-          unmuteVideos(videoVol);
-        };
-
-        window.speechSynthesis.speak(utterance);
-      }, 650);
-    } catch (e) {
-      // Speech failover
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = "id-ID";
-      utterance.rate = 0.76;
-      utterance.pitch = 1.05;
-      utterance.volume = voiceVolNormalized; // Applied custom voice volume scale
-      
-      const voices = window.speechSynthesis.getVoices();
-      const indonesianVoice = voices.find((v) => v.name.includes("Google") && v.lang.startsWith("id"))
-        || voices.find((v) => v.lang.startsWith("id"));
-
-      if (indonesianVoice) {
-        utterance.voice = indonesianVoice;
-      }
-
-      utterance.onend = () => {
-        unmuteVideos(videoVol);
-      };
-      utterance.onerror = () => {
-        unmuteVideos(videoVol);
-      };
-      window.speechSynthesis.speak(utterance);
-    }
-
-    // Safety fallback to unmute after 8 seconds in case browser speechSynthesis API gets frozen or interrupted
-    setTimeout(() => {
-      unmuteVideos(videoVol);
-    }, 8000);
-  };
+  // Vocal announcements are removed from the display monitor so they only play locally on the calling officer's device.
 
   // Determine standard contrast safely
   const getLightOrDarkContrast = (hex: string) => {
@@ -592,23 +480,32 @@ export default function DisplayMonitor({
         <div className="flex items-center gap-3">
           {/* PLN Logo image */}
           <img 
-            src="/logo-pln1.png" 
-            alt="PLN Logo" 
-            className={`${
-              isFullscreen ? "h-12 w-12" : "h-10 w-10"
-            } object-contain shrink-0`}
+            src={settings.logoUrl || "/logo-pln1.png"} 
+            alt="Logo" 
+            className="object-contain shrink-0"
+            style={
+              settings.logoSize 
+                ? { width: `${settings.logoSize}px`, height: `${settings.logoSize}px` } 
+                : { width: isFullscreen ? "48px" : "40px", height: isFullscreen ? "48px" : "40px" }
+            }
             referrerPolicy="no-referrer"
           />
 
           <div>
-            <h1 className={`font-black tracking-tight text-white uppercase leading-none ${
-              isFullscreen ? "text-base md:text-lg xl:text-xl" : "font-extrabold text-sm md:text-base"
-            }`}>
+            <h1 
+              className={`font-black tracking-tight text-white uppercase leading-none ${
+                isFullscreen ? "text-base md:text-lg xl:text-xl" : "font-extrabold text-sm md:text-base"
+              }`}
+              style={settings.textSizeHeaderLeft ? { fontSize: `${settings.textSizeHeaderLeft}px` } : undefined}
+            >
               {textHeaderLeft}
             </h1>
-            <p className={`font-bold uppercase text-cyan-400 mt-1 ${
-              isFullscreen ? "text-xs tracking-widest" : "text-[10px] tracking-wider"
-            }`}>
+            <p 
+              className={`font-bold uppercase text-cyan-400 mt-1 ${
+                isFullscreen ? "text-xs tracking-widest" : "text-[10px] tracking-wider"
+              }`}
+              style={settings.textSizeHeaderSubtext ? { fontSize: `${settings.textSizeHeaderSubtext}px` } : undefined}
+            >
               {textHeaderSubtext}
             </p>
           </div>
@@ -705,27 +602,41 @@ export default function DisplayMonitor({
           <div className={`bg-[#001726]/85 border border-white/10 rounded-2xl flex flex-col justify-center items-center text-center shadow-lg relative shrink-0 ${
             isFullscreen ? "p-5" : "p-4"
           }`}>
-            {/* Big Hour-Minute-Second display using dot separators as in the screenshot */}
-            <div className={`font-mono font-extrabold text-[#00D2FF] tracking-wider leading-none ${
-              isFullscreen ? "text-5xl xl:text-6xl" : "text-4xl"
-            }`}>
-              {time.toLocaleTimeString("id-ID", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              }).replace(/:/g, ".")}
+            {/* Big Hour-Minute-Second display using customizable template or defaults */}
+            <div 
+              className={`font-mono font-extrabold text-[#00D2FF] tracking-wider leading-none ${
+                isFullscreen ? "text-5xl xl:text-6xl" : "text-4xl"
+              }`}
+              style={{
+                ...(settings.textSizeClock ? { fontSize: `${settings.textSizeClock}px` } : {}),
+                ...(settings.colorClock ? { color: settings.colorClock } : {})
+              }}
+            >
+              {formatClock(time, settings.clockFormatTemplate)}
             </div>
 
-            <div className={`font-black text-amber-300 uppercase tracking-widest mt-2 mb-0.5 ${
-              isFullscreen ? "text-xs xl:text-sm" : "text-[9px]"
-            }`}>
-              JAM BUKA LAYANAN KAMI
+            <div 
+              className={`font-black text-amber-300 uppercase tracking-widest mt-2 mb-0.5 ${
+                isFullscreen ? "text-xs xl:text-sm" : "text-[9px]"
+              }`}
+              style={{
+                ...(settings.textSizeClockTitle ? { fontSize: `${settings.textSizeClockTitle}px` } : {}),
+                ...(settings.colorClockTitle ? { color: settings.colorClockTitle } : {})
+              }}
+            >
+              {settings.textClockTitle || "JAM BUKA LAYANAN KAMI"}
             </div>
 
             {/* Formatted Date & Day */}
-            <div className={`font-bold text-white/80 ${
-              isFullscreen ? "text-sm xl:text-base" : "text-xs"
-            }`}>
+            <div 
+              className={`font-bold text-white/80 ${
+                isFullscreen ? "text-sm xl:text-base" : "text-xs"
+              }`}
+              style={{
+                ...(settings.textSizeDayDate ? { fontSize: `${settings.textSizeDayDate}px` } : {}),
+                ...(settings.colorDayDate ? { color: settings.colorDayDate } : {})
+              }}
+            >
               {time.toLocaleDateString("id-ID", {
                 weekday: "long",
                 day: "numeric",
@@ -747,14 +658,20 @@ export default function DisplayMonitor({
             >
               {/* Top title bar */}
               <div className="relative z-10 w-full">
-                <h3 className={`font-black uppercase tracking-wider text-white leading-tight ${
-                  isFullscreen ? "text-base md:text-lg xl:text-xl" : "text-xs md:text-sm"
-                }`}>
+                <h3 
+                  className={`font-black uppercase tracking-wider text-white leading-tight ${
+                    isFullscreen ? "text-base md:text-lg xl:text-xl" : "text-xs md:text-sm"
+                  }`}
+                  style={settings.textSizeCardText ? { fontSize: `${settings.textSizeCardText}px` } : undefined}
+                >
                   {loketA?.serviceName || nameAntrianA}
                 </h3>
-                <p className={`uppercase font-mono tracking-widest text-[#CCE4F5] mt-1 font-bold ${
-                  isFullscreen ? "text-xs" : "text-[9px]"
-                }`}>
+                <p 
+                  className={`uppercase font-mono tracking-widest text-[#CCE4F5] mt-1 font-bold ${
+                    isFullscreen ? "text-xs" : "text-[9px]"
+                  }`}
+                  style={settings.textSizeCardText ? { fontSize: `max(9px, ${settings.textSizeCardText - 4}px)` } : undefined}
+                >
                   Nomor Antrean
                 </p>
               </div>
@@ -769,9 +686,12 @@ export default function DisplayMonitor({
               </div>
 
               {/* Card Footer with assigned counter name */}
-              <div className={`border-t border-[#CCE4F5]/20 pt-2 flex justify-between font-black uppercase text-white tracking-wider ${
-                isFullscreen ? "text-sm md:text-base pt-3" : "text-[10px]"
-              }`}>
+              <div 
+                className={`border-t border-[#CCE4F5]/20 pt-2 flex justify-between font-black uppercase text-white tracking-wider ${
+                  isFullscreen ? "text-sm md:text-base pt-3" : "text-[10px]"
+                }`}
+                style={settings.textSizeCardText ? { fontSize: `max(10px, ${settings.textSizeCardText - 2}px)` } : undefined}
+              >
                 <span>{lastCalledA ? lastCalledA.loketName || loketA?.name || "LOKET A" : (loketA?.name || "LOKET 1")}</span>
                 <span className={currentTicketA ? "text-amber-200" : "text-sky-200"}>
                   {currentTicketA ? "SEDANG DIPANGGIL" : "MENUNGGU"}
@@ -787,14 +707,20 @@ export default function DisplayMonitor({
             >
               {/* Top title bar */}
               <div className="relative z-10 w-full">
-                <h3 className={`font-black uppercase tracking-wider text-white leading-tight ${
-                  isFullscreen ? "text-base md:text-lg xl:text-xl" : "text-xs md:text-sm"
-                }`}>
+                <h3 
+                  className={`font-black uppercase tracking-wider text-white leading-tight ${
+                    isFullscreen ? "text-base md:text-lg xl:text-xl" : "text-xs md:text-sm"
+                  }`}
+                  style={settings.textSizeCardText ? { fontSize: `${settings.textSizeCardText}px` } : undefined}
+                >
                   {loketB?.serviceName || nameAntrianB}
                 </h3>
-                <p className={`uppercase font-mono tracking-widest text-[#D1FAE5] mt-1 font-bold ${
-                  isFullscreen ? "text-xs" : "text-[9px]"
-                }`}>
+                <p 
+                  className={`uppercase font-mono tracking-widest text-[#D1FAE5] mt-1 font-bold ${
+                    isFullscreen ? "text-xs" : "text-[9px]"
+                  }`}
+                  style={settings.textSizeCardText ? { fontSize: `max(9px, ${settings.textSizeCardText - 4}px)` } : undefined}
+                >
                   Nomor Antrean
                 </p>
               </div>
@@ -809,9 +735,12 @@ export default function DisplayMonitor({
               </div>
 
               {/* Card Footer with assigned counter name */}
-              <div className={`border-t border-[#D1FAE5]/20 pt-2 flex justify-between font-black uppercase text-white tracking-wider ${
-                isFullscreen ? "text-sm md:text-base pt-3" : "text-[10px]"
-              }`}>
+              <div 
+                className={`border-t border-[#D1FAE5]/20 pt-2 flex justify-between font-black uppercase text-white tracking-wider ${
+                  isFullscreen ? "text-sm md:text-base pt-3" : "text-[10px]"
+                }`}
+                style={settings.textSizeCardText ? { fontSize: `max(10px, ${settings.textSizeCardText - 2}px)` } : undefined}
+              >
                 <span>{lastCalledB ? lastCalledB.loketName || loketB?.name || "LOKET B" : (loketB?.name || "LOKET P2TL")}</span>
                 <span className={currentTicketB ? "text-amber-200" : "text-emerald-200"}>
                   {currentTicketB ? "SEDANG DIPANGGIL" : "MENUNGGU"}
@@ -829,17 +758,18 @@ export default function DisplayMonitor({
       <div
         className="py-2.5 px-5 font-bold tracking-normal relative overflow-hidden shrink-0 border-t border-slate-900 flex items-center shadow-lg"
         style={{ 
-          fontSize: `max(14px, ${textSizeRunning - 4}px)`,
+          fontSize: settings.textSizeRunning ? `${settings.textSizeRunning}px` : `max(14px, ${textSizeRunning - 4}px)`,
           backgroundColor: colorBottomBg,
           color: colorBottomText,
         }} 
         id="marquee-footer-track"
       >
         <div 
-          className="absolute left-0 top-0 bottom-0 text-white font-black text-[10px] px-4 flex items-center justify-center shrink-0 uppercase tracking-widest z-10 border-r"
+          className="absolute left-0 top-0 bottom-0 text-white font-black px-4 flex items-center justify-center shrink-0 uppercase tracking-widest z-10 border-r"
           style={{ 
             backgroundColor: colorHeaderLeft, // use Header color as tag accent identifier, matching corporate identity 
-            borderColor: "rgba(255,255,255,0.15)"
+            borderColor: "rgba(255,255,255,0.15)",
+            fontSize: settings.textSizeBottomLabel ? `${settings.textSizeBottomLabel}px` : "10px"
           }}
         >
           {textBottomLabel}

@@ -48,11 +48,11 @@ export default function SetelanLoket({ loketList, onUpdateLoket }: SetelanLoketP
         <form onSubmit={handleAddLoketSubmit} className="lg:col-span-12 xl:col-span-5 bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-4">
           <h3 className="font-extrabold text-slate-800 text-xs tracking-wider uppercase mb-3 flex items-center gap-1.5 border-b pb-2">
             <Plus className="w-4 h-4 text-sky-600" />
-            Tambah Counter Desk Baru
+            Tambah Loket Baru
           </h3>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase">Nama Loket / Tempat Mengantri</label>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase">Nama Loket</label>
             <input
               type="text"
               value={newLoketName}
@@ -65,7 +65,7 @@ export default function SetelanLoket({ loketList, onUpdateLoket }: SetelanLoketP
 
           <div className="grid grid-cols-3 gap-2">
             <div className="col-span-1">
-              <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase">Prefix / Kode</label>
+              <label className="block text-[11px] font-bold text-slate-500 mb-1 uppercase">Kode Loket</label>
               <input
                 type="text"
                 value={newLoketPrefix}
@@ -93,13 +93,13 @@ export default function SetelanLoket({ loketList, onUpdateLoket }: SetelanLoketP
             type="submit"
             className="w-full py-2.5 bg-slate-900 hover:bg-slate-950 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center justify-center gap-1.5"
           >
-            <Plus className="w-4 h-4" /> Daftarkan Loket
+            Daftarkan Loket
           </button>
         </form>
 
         {/* Counter Lists */}
         <div className="lg:col-span-7 space-y-4">
-          <h4 className="font-extrabold text-slate-800 text-sm tracking-tight">Fisik Loket Aktif ({loketList.length})</h4>
+          <h4 className="font-extrabold text-slate-800 text-sm tracking-tight">Daftar Loket Aktif ({loketList.length})</h4>
 
           <div className="overflow-x-auto rounded-2xl border border-slate-100">
             <table className="w-full text-left text-xs border-collapse">

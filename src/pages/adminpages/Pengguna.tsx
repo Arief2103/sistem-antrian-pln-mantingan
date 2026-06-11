@@ -38,14 +38,10 @@ export default function Pengguna({ usersList, onUpdateUsersList }: PenggunaProps
 
   return (
     <div className="space-y-6" id="panel-users-tab">
-      <div className="border-b pb-3 border-slate-100">
+      <div className="border-b border-slate-100">
         <h3 className="font-extrabold text-slate-800 text-sm tracking-tight flex items-center gap-1.5">
-          <Users className="w-4.5 h-4.5 text-pink-500" />
           PENGATURAN PENGGUNA & ADMIN PETUGAS LOKET
         </h3>
-        <p className="text-slate-400 text-xs mt-1">
-          Daftarkan akun login untuk petugas pelayanan meja loket di PLN ULP Mantingan.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -58,7 +54,7 @@ export default function Pengguna({ usersList, onUpdateUsersList }: PenggunaProps
             <input
               type="text"
               className="w-full bg-white border border-slate-200 text-xs rounded-xl p-2.5 text-slate-800 font-medium focus:outline-none"
-              placeholder="Contoh: Arief Prasetyo"
+              placeholder="Masukkan Nama..."
               value={newUserName}
               onChange={(e) => setNewUserName(e.target.value)}
               required
@@ -70,7 +66,7 @@ export default function Pengguna({ usersList, onUpdateUsersList }: PenggunaProps
             <input
               type="text"
               className="w-full bg-white border border-slate-200 text-xs rounded-xl p-2.5 text-slate-800 font-mono focus:outline-none"
-              placeholder="Contoh: arief21"
+              placeholder="Buat Username..."
               value={newUserUsername}
               onChange={(e) => setNewUserUsername(e.target.value)}
               required

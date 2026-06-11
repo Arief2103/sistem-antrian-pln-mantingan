@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { QueueItem } from "../../types";
-import { FileSpreadsheet, Search, Calendar } from "lucide-react";
+import { FileSpreadsheet, Search, Calendar, Trash2 } from "lucide-react";
 
 interface RekapDataPelangganProps {
   queues: QueueItem[];
+  onDeleteQueue?: (id: string) => void;
 }
 
-export default function RekapDataPelanggan({ queues = [] }: RekapDataPelangganProps) {
+export default function RekapDataPelanggan({ queues = [], onDeleteQueue }: RekapDataPelangganProps) {
   // Simple clean filters: ID Pelanggan, Nama, and Tanggal
   const [idPelFilter, setIdPelFilter] = useState("");
   const [namaFilter, setNamaFilter] = useState("");
@@ -202,6 +203,7 @@ export default function RekapDataPelanggan({ queues = [] }: RekapDataPelangganPr
               <th className="p-3 border border-slate-300">No HP</th>
               <th className="p-3 border border-slate-300">Keterangan</th>
               <th className="p-3 border border-slate-300">Tanggal</th>
+              <th className="p-3 border border-slate-300 text-center w-24">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 text-slate-700 text-xs font-medium">
@@ -264,6 +266,22 @@ export default function RekapDataPelanggan({ queues = [] }: RekapDataPelangganPr
                     {formattedDate}
                   </td>
 
+                  {/* Aksi */}
+                  <td className="p-3 text-center border border-slate-200 whitespace-nowrap">
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Apakah Anda yakin ingin menghapus data antrean untuk ID "${item.pelangganId || '-'}" / "${item.pelangganNama || 'Tanpa Nama'}"?`)) {
+                          onDeleteQueue?.(item.id);
+                        }
+                      }}
+                      className="px-2.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-250 hover:border-transparent rounded font-bold text-[10px] inline-flex items-center gap-1 cursor-pointer transition-all uppercase tracking-wider shadow-3xs"
+                      title="Hapus Data"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Hapus</span>
+                    </button>
+                  </td>
+
                 </tr>
               );
             })}
@@ -271,7 +289,7 @@ export default function RekapDataPelanggan({ queues = [] }: RekapDataPelangganPr
             {/* Empty matching fallback */}
             {totalFiltered === 0 && (
               <tr>
-                <td colSpan={7} className="p-10 text-center text-slate-400 italic bg-white select-none border border-slate-200">
+                <td colSpan={8} className="p-10 text-center text-slate-400 italic bg-white select-none border border-slate-200">
                   Tidak ada data yang cocok dengan pencarian / filter Anda.
                 </td>
               </tr>

@@ -80,6 +80,20 @@ export interface MonitorSettings {
   layoutMode?: "normal" | "video-only"; // "normal" multi-panel or "video-only" full screen video layout
   videoVolume?: number; // Volume for video source (0 - 100)
   voiceVolume?: number; // Volume for announcement voice (0 - 100)
+  textSizeHeaderLeft?: number; // Font size of text header left (main brand, px)
+  textSizeHeaderSubtext?: number; // Font size of text header subtext (unit, px)
+  textSizeCardText?: number; // Font size of texts inside queue counter cards (px)
+  textSizeBottomLabel?: number; // Font size of bottom marquee left label (px)
+  logoSize?: number; // Logo image size in px (defaults to 44 or similar)
+  textSizeClock?: number; // Font size of the digital clock (px)
+  textClockTitle?: string; // Title text shown below/around clock (defaults to "JAM BUKA LAYANAN KAMI")
+  textSizeClockTitle?: number; // Font size of the clock title text (px)
+  textSizeDayDate?: number; // Font size of day and date text (px)
+  clockFormatTemplate?: "HH.mm.ss" | "HH:mm:ss" | "HH.mm" | "HH:mm" | "HH.mm WIB"; // Selected clock format template
+  logoUrl?: string; // Custom image logo url / base64 data URL
+  colorClock?: string; // Digit text color for the clock (e.g. "#00D2FF")
+  colorClockTitle?: string; // Subtitle text color (e.g., "#FBBF24")
+  colorDayDate?: string; // Day Date text color (e.g. "#FFFFFF")
 }
 
 // Backend Server Types

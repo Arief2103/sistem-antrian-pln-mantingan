@@ -70,7 +70,7 @@ export default function LoginScreen({ usersList, onLoginSuccess, onSelectDisplay
   };
 
   return (
-    <div className="min-h-[580px] flex items-center justify-center bg-slate-50 p-4" id="login-portal-card">
+    <div className="h-screen flex items-center justify-center bg-slate-50 px-4"id="login-portal-card">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden" id="login-frame">
         
         {/* Banner with PLN corporate color theme */}
@@ -78,8 +78,8 @@ export default function LoginScreen({ usersList, onLoginSuccess, onSelectDisplay
           
 
           
-          <h2 className="text-xl font-bold uppercase tracking-tight">Sistem Antrean Pelanggan</h2>
-          <p className="text-xs text-sky-200 mt-1">Satu Link Akses PLN ULP Mantingan</p>
+          <h2 className="text-xl font-bold uppercase tracking-tight">Sistem Antrian Pelanggan</h2>
+          <p className="text-xs text-sky-200 mt-1">PT PLN (Persero) ULP Mantingan</p>
         </div>
 
         <form onSubmit={handleLogin} className="p-8 space-y-5" id="login-form">

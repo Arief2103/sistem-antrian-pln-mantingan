@@ -186,7 +186,7 @@ export default function OfficerDashboard({
     <div className="space-y-6" id="officer-simplified-dashboard-container">
       
       {/* Main Container Dashboard */}
-      <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm min-h-[460px]" id="officer-workplace-dashboard">
+      <div className="bg-white rounded-3xl border border-slate-100 p-10 shadow-sm min-h-[700px] max-w-7xl mx-auto">
         
         {/* ==================================== */}
         {/* VIEW 1: MENU UTAMA (2 MAIN CARDS)    */}
@@ -194,17 +194,17 @@ export default function OfficerDashboard({
         {currentMode === "menu" && (
           <div className="space-y-6 fade-in animate-fade-in" id="officer-landing-menu">
             <div className="text-center max-w-lg mx-auto py-4">
-              <h3 className="text-xl font-black text-slate-800 tracking-tight">Selamat Datang di Menu Pelayanan Kantor</h3>
+              <h3 className="text-xl font-black text-slate-800 tracking-tight">Selamat Datang di Menu Ruang Pelayanan</h3>
               <p className="text-xs text-slate-400 mt-1.5 font-semibold">
-                Pilih salah satu aktivitas di bawah ini untuk memulai melayani pelanggan PLN ULP Mantingan.
+                Pilih salah satu aktivitas di bawah ini untuk melayani pelanggan PT PLN ULP Mantingan.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto py-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl mx-auto py-8">
               {/* Card 1: Registrasi / Ambil Nomor Antrean */}
               <div 
                 onClick={() => setCurrentMode("registrasi")}
-                className="bg-[#1E40AF] border-2 border-[#3B82F6]/40 text-white rounded-3xl p-8 cursor-pointer shadow-lg hover:bg-[#1D4ED8] hover:shadow-xl focus:bg-[#1E3A8A] hover:scale-[1.01] active:scale-95 transition-all duration-300 group flex flex-col items-center justify-between text-center space-y-5 min-h-[300px]"
+                className="bg-[#1E40AF] border-2 border-[#3B82F6]/40 text-white rounded-3xl p-8 cursor-pointer shadow-lg hover:bg-[#1D4ED8] hover:shadow-xl focus:bg-[#1E3A8A] hover:scale-[1.01] active:scale-95 transition-all duration-300 group flex flex-col items-center justify-between text-center space-y-5 min-h-[370px]"
                 id="main-card-registrasi"
               >
                 <div className="w-20 h-20 bg-amber-450 bg-amber-200 text-slate-905 text-blue-900 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-all duration-300">
@@ -212,7 +212,7 @@ export default function OfficerDashboard({
                 </div>
                 
                 <div className="space-y-2">
-                  <h4 className="font-extrabold text-[#EEF2FF] text-lg md:text-xl group-hover:text-amber-200 transition-colors">
+                  <h4 className="font-extrabold text-[#EEF2FF] text-2xl group-hover:text-amber-200 transition-colors">
                     AMBIL NOMOR ANTRIAN
                   </h4>
                   <p className="text-[11px] text-[#EEF2FF]/90 max-w-xs leading-relaxed font-semibold">
@@ -220,7 +220,7 @@ export default function OfficerDashboard({
                   </p>
                 </div>
 
-                <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-black text-slate-900 tracking-wider bg-amber-200 px-4 py-2.5 rounded-full group-hover:bg-amber-300 shadow-md transition-colors">
+                <span className="inline-flex items-center gap-1.5 text-[13px] uppercase font-black text-slate-900 tracking-wider bg-amber-200 px-4 py-2.5 rounded-full group-hover:bg-amber-300 shadow-md transition-colors">
                   Ambil Nomor Antrian 
                 </span>
               </div>
@@ -236,7 +236,7 @@ export default function OfficerDashboard({
                 </div>
                 
                 <div className="space-y-2">
-                  <h4 className="font-extrabold text-[#E0F2FE] text-lg md:text-xl group-hover:text-amber-200 transition-colors">
+                  <h4 className="font-extrabold text-[#E0F2FE] text-2xl group-hover:text-amber-200 transition-colors">
                     PANGGIL ANTRIAN
                   </h4>
                   <p className="text-[11px] text-[#E0F2FE]/90 max-w-xs leading-relaxed font-semibold">
@@ -244,7 +244,7 @@ export default function OfficerDashboard({
                   </p>
                 </div>
 
-                <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-black text-slate-900 tracking-wider bg-amber-200 px-4 py-2.5 rounded-full group-hover:bg-amber-300 shadow-md transition-colors">
+                <span className="inline-flex items-center gap-1.5 text-[13px] uppercase font-black text-slate-900 tracking-wider bg-amber-200 px-4 py-2.5 rounded-full group-hover:bg-amber-300 shadow-md transition-colors">
                   Panggil Antrian
                 </span>
               </div>
@@ -258,8 +258,8 @@ export default function OfficerDashboard({
         {currentMode === "registrasi" && (
           <div className="space-y-6 fade-in animate-fade-in" id="officer-registrasi-room">
             
-            {/* Top Toolbar Navigation */}
-            <div className="flex items-center justify-between border-b pb-4 mb-2">
+            {/* Top Toolbar Navigation - Centered, Red, and Enlarged */}
+            <div className="flex justify-center border-b pb-5 mb-4">
               <button 
                 onClick={() => {
                   setRegistrasiStep("form");
@@ -270,11 +270,10 @@ export default function OfficerDashboard({
                   setCustKeterangan("");
                   setCurrentMode("menu");
                 }}
-                className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer border border-slate-200/40"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-extrabold rounded-xl transition-all cursor-pointer border border-red-700 shadow-md transform hover:scale-105 active:scale-95 animate-pulse-subtle"
               >
-                <ChevronLeft className="w-4 h-4" /> Kembali ke Menu Utama
+                <ChevronLeft className="w-5 h-5" /> Kembali ke Menu Utama
               </button>
-              
             </div>
 
             <div className="max-w-4xl mx-auto space-y-6">
@@ -451,7 +450,7 @@ export default function OfficerDashboard({
                               PENDAFTARAN INSTAN / TANPA FORM
                             </span>
                             <p className="text-xs text-slate-500 font-semibold mt-1">
-                              Tiket antrean akan segera dicetak kosong tanpa menyertakan metadata identitas pelanggan.
+                              Tiket antrean akan segera dicetak kosong tanpa menyertakan data pelanggan.
                             </p>
                           </div>
                           <button
@@ -549,18 +548,18 @@ export default function OfficerDashboard({
         {currentMode === "panggil" && (
           <div className="space-y-6 fade-in animate-fade-in" id="officer-panggilan-panel">
             
-            {/* Nav Toolbar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b pb-4 gap-3">
+            {/* Nav Toolbar - Centered, Red, and Enlarged */}
+            <div className="flex flex-col items-center justify-center border-b pb-5 mb-4 gap-3">
               <button 
                 onClick={() => {
                   setCurrentMode("menu");
                 }}
-                className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer border border-slate-200/40"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-extrabold rounded-xl transition-all cursor-pointer border border-red-700 shadow-md transform hover:scale-105 active:scale-95 animate-pulse-subtle"
               >
-                <ChevronLeft className="w-4 h-4" /> Kembali ke Menu Utama
+                <ChevronLeft className="w-5 h-5" /> Kembali ke Menu Utama
               </button>
 
-              <span className="text-[11px] font-bold tracking-widest text-slate-400 uppercase">
+              <span className="text-[11px] font-bold tracking-widest text-slate-400 uppercase select-none">
                 Panel Panggilan Antrean PLN ULP Mantingan
               </span>
             </div>
@@ -868,13 +867,11 @@ export default function OfficerDashboard({
           
           <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-center text-white scale-up animate-scale-up space-y-4">
             
-            <div className="w-12 h-12 bg-sky-500/20 text-sky-400 rounded-full flex items-center justify-center font-bold mx-auto">
-              ⚡
-            </div>
+            
 
             <div className="space-y-0.5">
               <h4 className="font-bold text-sm text-slate-200 uppercase tracking-widest font-mono">TIKET ANTREAN DICETAK</h4>
-              <p className="text-[10px] text-slate-550 text-slate-400 font-mono uppercase">PLN ULP MANTINGAN</p>
+              <p className="text-[10px] text-slate-550 text-slate-400 font-mono uppercase">PT PLN (Persero) ULP Mantingan</p>
             </div>
 
             {/* Simulated Receipt paper layout */}
@@ -922,7 +919,7 @@ export default function OfficerDashboard({
                   {justPrintedTicket.formattedNumber || ""}
                 </h2>
                 
-                <div className="py-1 mt-2.5 font-extrabold text-[10px] text-slate-800 uppercase tracking-wider border-t border-b border-slate-150 w-full text-center">
+                <div className="py-1 mt-2 font-extrabold text-[8px] text-slate-800 uppercase tracking-wider w-full text-center">
                   {justPrintedTicket.serviceName}
                 </div>
               </div>

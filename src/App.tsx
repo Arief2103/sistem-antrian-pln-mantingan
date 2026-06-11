@@ -562,9 +562,107 @@ export default function App() {
     return newTicket;
   };
 
+  // Helper to spell Indonesian numbers dynamically and correctly (terbilang format) for local Officer device calling voice
+  const getIndonesianTerbilang = (n: number): string => {
+    if (n === 0) return "";
+    const units = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"];
+    if (n < 12) {
+      return units[n];
+    } else if (n < 20) {
+      return units[n - 10] + " belas";
+    } else if (n < 100) {
+      const tens = Math.floor(n / 10);
+      const remainder = n % 10;
+      return units[tens] + " puluh " + getIndonesianTerbilang(remainder);
+    } else if (n < 200) {
+      return "seratus " + getIndonesianTerbilang(n - 100);
+    } else if (n < 1000) {
+      const hundreds = Math.floor(n / 100);
+      const remainder = n % 100;
+      return units[hundreds] + " ratus " + getIndonesianTerbilang(remainder);
+    }
+    return n.toString();
+  };
+
+  const convertNumberToIndonesianSpelling = (n: number): string => {
+    if (n === 0) return "nol";
+    return getIndonesianTerbilang(n).replace(/\s+/g, " ").trim();
+  };
+
+  const playCallAudioLocally = (
+    prefix: string,
+    number: number,
+    loketName: string,
+    voiceVolume: number = 80
+  ) => {
+    const voiceVolNormalized = voiceVolume / 100;
+    const spokenNumber = convertNumberToIndonesianSpelling(number);
+    const textToSpeak = `Nomor antrean ${prefix} ... ${spokenNumber} ... silakan menuju ke ${loketName}`;
+
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        const audioCtx = new AudioContextClass();
+        const playChimeTone = (freq: number, start: number, duration: number) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.35 * voiceVolNormalized, start);
+          gain.gain.exponentialRampToValueAtTime(0.01 * voiceVolNormalized, start + duration);
+          osc.start(start);
+          osc.stop(start + duration);
+        };
+
+        playChimeTone(523.25, audioCtx.currentTime, 0.25); // C5
+        playChimeTone(659.25, audioCtx.currentTime + 0.12, 0.25); // E5
+        playChimeTone(783.99, audioCtx.currentTime + 0.24, 0.4); // G5
+      }
+
+      setTimeout(() => {
+        if ("speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(textToSpeak);
+          utterance.lang = "id-ID";
+          utterance.rate = 0.76;
+          utterance.pitch = 1.05;
+          utterance.volume = voiceVolNormalized;
+
+          const voices = window.speechSynthesis.getVoices();
+          const indonesianVoice = voices.find((v) => v.name.includes("Google") && v.lang.startsWith("id")) || 
+                                  voices.find((v) => v.lang.startsWith("id"));
+          if (indonesianVoice) {
+            utterance.voice = indonesianVoice;
+          }
+          window.speechSynthesis.speak(utterance);
+        }
+      }, 650);
+    } catch (e) {
+      console.warn("Failed to play local calling audio:", e);
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.lang = "id-ID";
+        utterance.rate = 0.76;
+        utterance.pitch = 1.05;
+        utterance.volume = voiceVolNormalized;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+  };
+
   // Helper action: Call/announce queue item on a Counter
   const handleCallQueue = (queueId: string, loketId: string, loketName: string) => {
     const callingTime = new Date().toISOString();
+    
+    // Play audio call announcement locally on the officer's browser
+    const targetQueue = queues.find((q) => q.id === queueId);
+    if (targetQueue) {
+      const vol = monitorSettings.voiceVolume !== undefined ? monitorSettings.voiceVolume : 80;
+      playCallAudioLocally(targetQueue.prefix, targetQueue.number, loketName, vol);
+    }
+
     const updated = queues.map((q) => {
       // If of status calling elsewhere, we can leave it
       if (q.id === queueId) {
@@ -693,6 +791,37 @@ export default function App() {
     });
   };
 
+  // Helper action: Delete a single queue customer record
+  const handleDeleteQueue = (id: string) => {
+    // Delete locally
+    setQueues((prev) => prev.filter((q) => q.id !== id));
+    
+    // Check and update last created queue if applicable
+    if (lastCreatedQueue?.id === id) {
+      setLastCreatedQueue(null);
+    }
+
+    try {
+      const saved = localStorage.getItem("pln_queue_items");
+      if (saved) {
+        const parsed: QueueItem[] = JSON.parse(saved);
+        const filtered = parsed.filter((q) => q.id !== id);
+        localStorage.setItem("pln_queue_items", JSON.stringify(filtered));
+      }
+    } catch (e) {
+      console.error("Local storage delete sync issue:", e);
+    }
+
+    // Delete remotely on Supabase with precise id
+    supabase
+      .from("queues")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.warn("Supabase queue delete item fail:", error.message);
+      });
+  };
+
 
 
   return (
@@ -718,17 +847,7 @@ export default function App() {
         </div>
       ) : !currentUser ? (
         // 1. Rendering Login screen when not authenticated
-        <div className="py-12" id="unauthenticated-view">
-          <div className="max-w-4xl mx-auto px-4 text-center mb-8">
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-sky-50 text-sky-700 rounded-full text-xs font-bold mb-4">
-              PLN ULP MANTINGAN, NGAWI
-            </div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">SISTEM INFORMASI ANTREAN</h1>
-            <p className="text-sm text-slate-500 mt-2 max-w-lg mx-auto">
-              Sistem manajemen operasional antrean pelayanan terpadu PLN ULP Mantingan. Silakan masuk untuk mengakses panel administrasi atau meja petugas.
-            </p>
-          </div>
-
+        <div className="py-12" id="unauthenticated-view">        
           <LoginScreen
             usersList={usersList}
             onLoginSuccess={handleLoginSuccess}
@@ -766,6 +885,7 @@ export default function App() {
               onLogout={handleLogout}
               isSidebarOpen={adminSidebarOpen}
               setIsSidebarOpen={setAdminSidebarOpen}
+              onDeleteQueue={handleDeleteQueue}
             />
           ) : (
             // Officer Desktop remains standard boxed layout
