@@ -1,4 +1,5 @@
 import { QueueItem, PrintSettings } from "../types";
+import { blePrinterManager } from "./blePrinter";
 
 /**
  * Utility function to handle real physical printing to thermal printers
@@ -14,6 +15,108 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
   };
 
   const safeSettings = { ...defaultPrint, ...(printSettings || {}) };
+
+  // 0. Check if Direct Web Bluetooth Printing is connected and configured
+  if (safeSettings.useWebBluetooth) {
+    if (blePrinterManager.isConnected()) {
+      blePrinterManager.printTicketDirect(item, safeSettings)
+        .catch((e) => {
+          console.error("Direct BLE print error, falling back:", e);
+        });
+      return;
+    }
+  }
+
+  // Format localized INDONESIA timestamp
+  let formattedDateTime = "";
+  try {
+    const d = new Date(item.createdAt);
+    const dateStr = d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    formattedDateTime = `${dateStr} ${timeStr} WIB`;
+  } catch {
+    formattedDateTime = "--/--/---- --:-- WIB";
+  }
+
+  // Format queue sequence direct without spaces, e.g. "A14"
+  const queueNumber = item.formattedNumber || "";
+
+  // Check if printing is routed to RawBT direct silent printing app
+  if (safeSettings.useRawBtApp) {
+    let bpStr = "";
+    bpStr += `${safeSettings.headerText || "PT PLN (PERSERO)"}\n`;
+    if (safeSettings.subHeader) bpStr += `${safeSettings.subHeader}\n`;
+    if (safeSettings.alamat) bpStr += `${safeSettings.alamat}\n`;
+    bpStr += `--------------------------------\n\n`;
+    bpStr += `NOMOR ANTRIAN ANDA\n\n`;
+    bpStr += `${queueNumber}\n\n`;
+    bpStr += `${item.serviceName}\n`;
+    bpStr += `--------------------------------\n`;
+    bpStr += `Waktu: ${formattedDateTime}\n`;
+    bpStr += `--------------------------------\n`;
+    if (safeSettings.footerSatu) bpStr += `${safeSettings.footerSatu}\n`;
+    if (safeSettings.footerDua) bpStr += `${safeSettings.footerDua}\n`;
+    
+    bpStr += `\n\n\n\n`;
+
+    const rawbtUrl = `intent:#Intent;scheme=rawbt;package=ru.a410f.gstore.rawbtprinter;S.text=${encodeURIComponent(bpStr)};end`;
+    window.location.href = rawbtUrl;
+    return;
+  }
+
+  // Check if printing is routed to the Android Bluetooth Print companion app
+  if (safeSettings.useBluetoothPrintApp) {
+    let bpStr = "";
+
+    // 1. Kop Surat (B=1, A=1 for center bold, F=2 for double-width+height or F=0)
+    bpStr += `<112>${safeSettings.headerText || "PT PLN (PERSERO)"}\n`;
+    if (safeSettings.subHeader) {
+      bpStr += `<110>${safeSettings.subHeader}\n`;
+    }
+    if (safeSettings.alamat) {
+      bpStr += `<010>${safeSettings.alamat}\n`;
+    }
+    bpStr += `<010>--------------------------------\n`;
+
+    // 2. Title label (Bold, Center)
+    bpStr += `<110>NOMOR ANTRIAN ANDA\n\n`;
+
+    // 3. Queue Ticket Number (Bold, Center, Double Height + Width)
+    bpStr += `<112>${queueNumber}\n\n`;
+
+    // 4. Category / Service Name (Bold, Center, Normal)
+    bpStr += `<110>${item.serviceName}\n`;
+    bpStr += `<010>--------------------------------\n`;
+
+    // 5. Timestamp details
+    bpStr += `<000>Waktu: ${formattedDateTime}\n`;
+    bpStr += `<010>--------------------------------\n`;
+
+    // 6. Footer (Center, Normal size)
+    if (safeSettings.footerSatu) {
+      bpStr += `<010>${safeSettings.footerSatu}\n`;
+    }
+    if (safeSettings.footerDua) {
+      bpStr += `<010>${safeSettings.footerDua}\n`;
+    } else if (safeSettings.footerText && safeSettings.footerText !== "Terima kasih...") {
+      bpStr += `<010>${safeSettings.footerText}\n`;
+    }
+
+    // 7. QR code verification (Optional)
+    if (safeSettings.cetakQr) {
+      bpStr += `\n<QR>1#40#${queueNumber}\n`;
+      bpStr += `<010>PLN MOBILE QUICK SCAN\n`;
+    }
+
+    // Newlines to feed physical paper past cutter slot
+    bpStr += `\n\n\n\n`;
+
+    // Standard Android Intent syntax targeted direct to Bluetooth Print package
+    const intentUrl = `intent:#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=${encodeURIComponent(bpStr)};package=mate.bluetoothprint;end`;
+    
+    window.location.href = intentUrl;
+    return;
+  }
 
   // 1. Create a dynamic hidden iframe for clean printing isolation
   const iframeId = "invisible-thermal-printer-iframe";
@@ -39,72 +142,9 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
     return;
   }
 
-  // 2. Format localized INDONESIA timestamp
-  let formattedDateTime = "";
-  try {
-    const d = new Date(item.createdAt);
-    const dateStr = d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-    formattedDateTime = `${dateStr} ${timeStr} WIB`;
-  } catch {
-    formattedDateTime = "--/--/---- --:-- WIB";
-  }
-
   // Determine paper width styles based on setting: 58mm or 80mm content
   const is80mm = safeSettings.paperWidth === "80mm";
   const contentWidth = is80mm ? "72mm" : "48mm";
-
-  // Format queue sequence direct without spaces, e.g. "A14"
-  const queueNumber = item.formattedNumber || "";
-
-  // Compute logo layout position: default back-compatibility
-  const logoPos = safeSettings.logoPosition || (safeSettings.showLogo ? "top" : "none");
-
-  // CSS Helpers for variable styles
-  const getStyleCSS = (styleVal: string | undefined, defaultStyle: string) => {
-    const style = styleVal || defaultStyle;
-    if (style === "bold") return "font-weight: bold; font-style: normal;";
-    if (style === "italic") return "font-weight: normal; font-style: italic;";
-    if (style === "bold-italic") return "font-weight: bold; font-style: italic;";
-    return "font-weight: normal; font-style: normal;";
-  };
-
-  const getHeaderSizeCSS = (sizeVal: string | undefined) => {
-    const size = sizeVal || "10";
-    if (size === "normal") return "font-size: 9.5pt;";
-    if (size === "large") return "font-size: 11pt;";
-    if (size === "xlarge") return "font-size: 13pt;";
-    const num = parseFloat(size);
-    if (!isNaN(num)) return `font-size: ${num}pt;`;
-    return "font-size: 10pt;";
-  };
-
-  const getSubHeaderSizeCSS = (sizeVal: string | undefined) => {
-    const size = sizeVal || "8.5";
-    if (size === "normal") return "font-size: 7.5pt;";
-    if (size === "large") return "font-size: 9pt;";
-    const num = parseFloat(size);
-    if (!isNaN(num)) return `font-size: ${num}pt;`;
-    return "font-size: 8.5pt;";
-  };
-
-  const getFooterSizeCSS = (sizeVal: string | undefined) => {
-    const size = sizeVal || "9";
-    if (size === "normal") return "font-size: 7.5pt;";
-    if (size === "large") return "font-size: 9pt;";
-    const num = parseFloat(size);
-    if (!isNaN(num)) return `font-size: ${num}pt;`;
-    return "font-size: 9pt;";
-  };
-
-  const getDateTimeSizeCSS = (sizeVal: string | undefined) => {
-    const size = sizeVal || "8.5";
-    if (size === "normal") return "font-size: 7.5pt;";
-    if (size === "large") return "font-size: 9.5pt;";
-    const num = parseFloat(size);
-    if (!isNaN(num)) return `font-size: ${num}pt;`;
-    return "font-size: 8.5pt;";
-  };
 
   // Build customer details block - removed as requested
   const customerDetailsHTML = "";
@@ -135,14 +175,14 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
         }
 
         body {
-          width: 100%;
+          width: ${contentWidth};
           max-width: 100%;
-          margin: 0;
-          padding: 3mm 2mm;
+          margin: 0 auto;
+          padding: 3mm 1mm;
           background-color: #fff;
           color: #000;
           font-family: Arial, Helvetica, sans-serif, system-ui;
-          font-size: 8pt;
+          font-size: 8.5px;
           line-height: 1.35;
           text-align: center;
           -webkit-print-color-adjust: exact;
@@ -152,303 +192,140 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
         /* Elements styling */
         .header-container {
           display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
           width: 100%;
           margin-bottom: 2mm;
         }
 
-        .header-container.layout-side {
-          flex-direction: row;
-          align-items: center;
-          justify-content: flex-start;
-          text-align: left;
-        }
-
-        .header-container.layout-top {
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          margin-bottom: 3mm;
-        }
-
-        .header-container.layout-none {
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-        }
-
         .logo-box {
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .header-container.layout-side .logo-box {
-          margin-right: 2.5mm;
-          margin-bottom: 0;
-        }
-
-        .header-container.layout-top .logo-box {
-          margin-right: 0;
-          margin-bottom: 1.5mm;
-        }
-
-        .pln-symbol {
-          width: 20px;
-          height: 26px;
-          background-color: #FFE600 !important;
-          border-radius: 1px;
-          position: relative;
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid #000;
+          background-color: #005B9C !important;
+          color: #FFE600 !important;
+          border-radius: 8px;
+          margin-bottom: 2mm;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
         .pln-thunderbolt {
-          font-size: 11pt;
-          color: #E30613;
+          font-size: 80%;
           font-weight: bold;
-          line-height: 1;
-        }
-
-        .pln-waves {
-          position: absolute;
-          bottom: 2px;
-          left: 1px;
-          right: 1px;
-          height: 4px;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5px;
-        }
-
-        .pln-waves .wave {
-          height: 1.2px;
-          background-color: #005FA2 !important;
-          width: 100%;
-        }
-
-        .pln-text {
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: 6.5pt;
-          font-weight: 950;
-          color: #009FE3 !important;
-          letter-spacing: 0.3px;
-          margin-top: 1px;
           line-height: 1;
         }
 
         .header-text-block {
-          flex: 1;
-          min-width: 0;
+          width: 100%;
         }
 
         .header-title {
-          font-size: 9.5pt;
-          font-weight: 900;
-          text-transform: uppercase;
+          font-weight: bold;
+          line-height: 1.25;
+          margin-bottom: 1px;
         }
 
         .header-subtitle {
-          font-size: 7.5pt;
-          color: #333;
-          margin-top: 1.5px;
           font-weight: bold;
+          line-height: 1.2;
+          color: #222;
         }
 
         .divider {
           border-top: 1px dashed #000;
-          margin: 3mm 0;
+          margin: 2.5mm 0;
           height: 0;
           width: 100%;
         }
 
         .ticket-label {
-          font-size: 7.5pt;
+          color: #444;
           font-weight: bold;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          margin-bottom: 1mm;
+          letter-spacing: 0.5px;
+          margin-bottom: 2px;
         }
 
         .ticket-number {
-          font-size: 34pt;
           font-weight: 900;
           line-height: 1;
-          margin: 1mm 0;
+          margin: 2mm 0;
         }
 
         .service-badge {
-          font-size: 8pt;
           font-weight: bold;
-          text-transform: uppercase;
           color: #000;
           display: block;
-          margin-top: 1.5mm;
-          margin-bottom: 2mm;
+          margin-top: 1mm;
+          margin-bottom: 1mm;
           width: 100%;
-          letter-spacing: 0.3px;
         }
 
         .timestamp-box {
-          font-size: 7.5pt;
           text-align: center;
-          margin-top: 3.5mm;
+          margin-top: 2.5mm;
           font-weight: bold;
-        }
-
-        .customer-box {
-          border: 1px solid #000;
-          padding: 1.5mm;
-          margin-top: 3.5mm;
-          text-align: left;
-          font-size: 7pt;
-          border-radius: 2px;
-        }
-
-        .customer-title {
-          font-weight: 900;
-          border-bottom: 1px dashed #000;
-          padding-bottom: 0.5mm;
-          margin-bottom: 1mm;
-          font-size: 7pt;
-          text-align: center;
-          letter-spacing: 0.5px;
-        }
-
-        .customer-box div {
-          display: flex;
-          margin-bottom: 0.5px;
-        }
-
-        .customer-box .label {
-          width: 48px;
-          color: #222;
-          font-weight: bold;
-          flex-shrink: 0;
-        }
-
-        .customer-box .val {
-          font-weight: bold;
-          word-break: break-all;
         }
 
         .footer-message {
-          font-size: 7.5pt;
-          font-style: italic;
-          margin-top: 4mm;
-          line-height: 1.4;
-          padding: 0 1mm;
-        }
-
-        .credit {
-          font-size: 6.5pt;
-          font-weight: bold;
-          letter-spacing: 0.5px;
-          margin-top: 3.5mm;
-          text-transform: uppercase;
-        }
-
-        /* Fake Barcode lines for POS realism */
-        .barcode {
-          display: flex;
-          justify-content: center;
-          height: 12px;
+          line-height: 1.35;
           margin-top: 3mm;
-          opacity: 0.85;
-          overflow: hidden;
-        }
-
-        .barcode-bar {
-          background-color: #000;
-          height: 100%;
-        }
-
-        .truncate-lines {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          font-weight: normal;
         }
       </style>
     </head>
-    <body onload="checkAndPrint()">
-      <script>
-        function checkAndPrint() {
-          var img = document.querySelector('.logo-box img');
-          if (img && !img.complete) {
-            img.onload = function() {
-              window.focus();
-              window.print();
-            };
-            img.onerror = function() {
-              window.focus();
-              window.print();
-            };
-            setTimeout(function() {
-              window.focus();
-              window.print();
-            }, 800);
-          } else {
-            setTimeout(function() {
-              window.focus();
-              window.print();
-            }, 150);
-          }
-        }
-      </script>
+    <body onload="window.focus(); setTimeout(function(){ window.print(); }, 200);">
 
-      <div class="header-container ${logoPos === 'top' ? 'layout-top' : logoPos === 'side' ? 'layout-side' : 'layout-none'}">
-        ${logoPos !== "none" ? (
+      <div class="header-container">
+        ${safeSettings.showLogo !== false ? (
           safeSettings.logoType === "custom" && safeSettings.customLogo ? `
-          <div class="logo-box">
-            <img src="${safeSettings.customLogo}" style="max-width: 40px; max-height: 48px; min-width: 25px; min-height: 25px; object-fit: contain; display: block;" />
+          <div class="logo-box-wrapper" style="margin-bottom: 2mm; display: flex; justify-content: center; align-items: center; width: 100%;">
+            <img src="${safeSettings.customLogo}" style="max-height: ${safeSettings.logoSize || 48}px; max-width: ${safeSettings.logoSize || 48}px; object-fit: contain; filter: grayscale(100%) contrast(200%);" />
           </div>
           ` : `
-          <div class="logo-box">
-            <div class="pln-symbol">
-              <div class="pln-thunderbolt">⚡</div>
-              <div class="pln-waves">
-                <div class="wave"></div>
-                <div class="wave"></div>
-              </div>
-            </div>
-            <div class="pln-text">PLN</div>
+          <div class="logo-box" style="width: ${safeSettings.logoSize || 48}px; height: ${safeSettings.logoSize || 48}px;">
+            <span class="pln-thunderbolt">⚡</span>
           </div>
           `
         ) : ""}
         <div class="header-text-block">
-          <div class="header-title" style="${getHeaderSizeCSS(safeSettings.headerSize)} ${getStyleCSS(safeSettings.headerStyle, "bold")}">
-            ${safeSettings.headerText || "PT PLN (PERSERO)"}
+          <div class="header-title" style="font-size: ${safeSettings.sizeNamaInstansi || 14}px;">
+            ${safeSettings.namaInstansi || safeSettings.headerText || "PT PLN (Persero) UP3 Madiun"}
           </div>
-          <div class="header-subtitle" style="${getSubHeaderSizeCSS(safeSettings.subHeaderSize)} ${getStyleCSS(safeSettings.subHeaderStyle, "bold")}">
-            ${safeSettings.subHeader || "ULP MANTINGAN"}
+          <div class="header-subtitle" style="font-size: ${safeSettings.sizeCabang || 11}px;">
+            ${safeSettings.cabang || safeSettings.subHeader || "ULP Mantingan"}
           </div>
+          ${safeSettings.alamat ? `
+          <div style="font-size: ${safeSettings.sizeAlamat || 8}px; color: #444; margin-top: 1px;">
+            ${safeSettings.alamat}
+          </div>
+          ` : ""}
         </div>
       </div>
 
       <div class="divider"></div>
 
-      <div class="ticket-label">NOMOR ANTREAN ANDA</div>
-      <div class="ticket-number">${queueNumber}</div>
-      <div class="service-badge">${item.serviceName}</div>
+      <div class="ticket-label" style="font-size: ${safeSettings.sizeTeksNomorAntrian || 9}px;">NOMOR ANTRIAN ANDA</div>
+      <div class="ticket-number" style="font-size: ${safeSettings.sizeNomorAntrian || 40}px;">${queueNumber}</div>
+      <div class="service-badge" style="font-size: ${safeSettings.sizeLayanan || 10}px;">${item.serviceName}</div>
 
       <div class="divider"></div>
 
-      <div class="timestamp-box" style="${getDateTimeSizeCSS(safeSettings.dateTimeSize)} ${getStyleCSS(safeSettings.dateTimeStyle, "normal")}">
-        <div>${formattedDateTime}</div>
+      <div class="timestamp-box" style="font-size: ${safeSettings.sizeDateTime || 8}px;">
+        <div>Waktu: ${formattedDateTime} WIB</div>
       </div>
 
-      <p class="footer-message" style="${getFooterSizeCSS(safeSettings.footerSize)} ${getStyleCSS(safeSettings.footerStyle, "italic")}">
-        "${safeSettings.footerText || "Terima kasih atas kunjungan anda. Jauhi bahaya listrik demi keselamatan keluarga tercinta."}"
+      <div class="divider"></div>
+
+      <p class="footer-message" style="font-size: ${safeSettings.sizeFooterSatu || 8}px; font-weight: bold;">
+        ${safeSettings.footerSatu || "Terima kasih atas kunjungan anda."}
       </p>
+      ${safeSettings.showFooterDua !== false && safeSettings.footerDua ? `
+      <p class="footer-message" style="font-size: ${safeSettings.sizeFooterDua || 8}px; color: #333; margin-top: 1.5mm;">
+        ${safeSettings.footerDua}
+      </p>
+      ` : ""}
 
     </body>
     </html>

@@ -91,10 +91,10 @@ export default function PengaturanMonitor({
       // Speak Indonesian Text-To-Speech queue testing sample
       setTimeout(() => {
         if ("speechSynthesis" in window) {
-          const textToSpeak = "Nomor antrean A, nol nol satu. Silakan menuju ke Loket satu.";
+          const textToSpeak = "Nomor antrean a satu, silakan menuju ke Loket satu.";
           const utterance = new SpeechSynthesisUtterance(textToSpeak);
           utterance.lang = "id-ID";
-          utterance.rate = 0.76;
+          utterance.rate = 0.85;
           utterance.pitch = 1.05;
           utterance.volume = voiceVolNormalized;
 
@@ -185,9 +185,10 @@ export default function PengaturanMonitor({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+    const isNumeric = name.startsWith("textSize") || name.endsWith("Size") || name === "logoSize" || name === "videoVolume" || name === "voiceVolume";
     setLocalSettings(prev => ({
       ...prev,
-      [name]: name === "textSizeRunning" ? (parseInt(value) || 12) : value,
+      [name]: isNumeric ? (parseInt(value, 10) || 0) : value,
     }));
   };
 
@@ -407,19 +408,18 @@ export default function PengaturanMonitor({
               </div>
             </div>
           </div>
-
           {/* Bagian 2: Kartu Loket Antrean */}
           <div className="bg-white rounded-lg border border-slate-200 p-5 space-y-4 shadow-sm" id="sec-cards-settings">
             <div className="pb-2 border-b border-slate-200">
               <h4 className="text-xs font-bold tracking-wider text-slate-800 uppercase">
-                2. Kartu Loket Antrean (Kategori & Ukuran Teks Kartu)
+                2. Kartu Loket Antrean (Kategori & Kustomisasi Desain)
               </h4>
               <p className="text-[11px] text-slate-400 mt-1 leading-normal">
-                Mengatur label layanan masing-masing kode prefix antrean dan kustomisasi warna kartu panggil yang aktif di monitor TV.
+                Mengatur kustomisasi warna latar kartu masing-masing kelompok antrean, serta ukuran huruf dan pewarnaan elemen-elemen di dalam kartu panggil monitor.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Kartu A */}
               <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between border-b pb-1 border-slate-200">
@@ -438,7 +438,7 @@ export default function PengaturanMonitor({
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Warna Latar Kartu A</label>
-                  <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-lg p-1.5">
+                  <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-lg p-1.55">
                     <input
                       type="color"
                       name="colorCardA"
@@ -469,7 +469,7 @@ export default function PengaturanMonitor({
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase">Warna Latar Kartu B</label>
-                  <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-lg p-1.5">
+                  <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-lg p-1.55">
                     <input
                       type="color"
                       name="colorCardB"
@@ -481,10 +481,112 @@ export default function PengaturanMonitor({
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Ukuran Huruf di dalam Kartu */}
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col justify-center">
-                {renderFontSizeControl("Ukuran Huruf Teks Kartu", "textSizeCardText", 14, "Mempengaruhi judul layanan dan label nomor di dalam kartu loket pada layar monitor.")}
+            {/* Kustomisasi Detail Font & Warna Elemen */}
+            <div className="border-t border-slate-100 pt-4 mt-2">
+              <h5 className="text-xs font-extrabold text-[#005B9C] uppercase tracking-wider mb-3">
+                Kustomisasi Font & Warna Teks Elemen Kartu
+              </h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-55 p-4 rounded-xl border border-slate-200 shadow-sm">
+                
+                {/* 1. Nama Loket */}
+                <div className="space-y-3 bg-white p-3.5 rounded-lg border border-slate-200">
+                  <span className="block text-xs font-black text-slate-800 border-b pb-1">1. NAMA LOKET</span>
+                  {renderFontSizeControl("Ukuran Font (px)", "textSizeCardHeader", 18)}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Warna Teks</label>
+                    <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg p-1 shadow-inner">
+                      <input
+                        type="color"
+                        name="colorCardHeader"
+                        value={localSettings.colorCardHeader || "#ffffff"}
+                        onChange={handleMonitorInputChange}
+                        className="w-8 h-6 rounded cursor-pointer border-0"
+                      />
+                      <span className="text-[10px] font-mono font-bold text-slate-600">{localSettings.colorCardHeader || "#ffffff"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Label NOMOR ANTRIAN */}
+                <div className="space-y-3 bg-white p-3.5 rounded-lg border border-slate-200">
+                  <span className="block text-xs font-black text-slate-800 border-b pb-1">2. SUBTITLE (LABEL)</span>
+                  {renderFontSizeControl("Ukuran Font (px)", "textSizeCardSubtitle", 10)}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Warna Teks</label>
+                    <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg p-1 shadow-inner">
+                      <input
+                        type="color"
+                        name="colorCardSubtitle"
+                        value={localSettings.colorCardSubtitle || "#ffffff"}
+                        onChange={handleMonitorInputChange}
+                        className="w-8 h-6 rounded cursor-pointer border-0"
+                      />
+                      <span className="text-[10px] font-mono font-bold text-slate-600">
+                        {localSettings.colorCardSubtitle || "#ffffff"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Nomor Antrian "A2" */}
+                <div className="space-y-3 bg-white p-3.5 rounded-lg border border-slate-200">
+                  <span className="block text-xs font-black text-slate-800 border-b pb-1">3. DIGIT NOMOR ANTRIAN</span>
+                  {renderFontSizeControl("Ukuran Font (px)", "textSizeCardNumber", 75)}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Warna Teks</label>
+                    <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg p-1 shadow-inner">
+                      <input
+                        type="color"
+                        name="colorCardNumber"
+                        value={localSettings.colorCardNumber || "#ffffff"}
+                        onChange={handleMonitorInputChange}
+                        className="w-8 h-6 rounded cursor-pointer border-0"
+                      />
+                      <span className="text-[10px] font-mono font-bold text-slate-600">{localSettings.colorCardNumber || "#ffffff"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Status "MENUNGGU" / "SEDANG DIPANGGIL" */}
+                <div className="space-y-3 bg-white p-3.5 rounded-lg border border-slate-200">
+                  <span className="block text-xs font-black text-slate-800 border-b pb-1">4. STATUS ANTRIAN</span>
+                  {renderFontSizeControl("Ukuran Font (px)", "textSizeCardStatus", 14)}
+                  <div className="grid grid-cols-1 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Sedang Dipanggil</label>
+                      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg p-1 shadow-inner">
+                        <input
+                          type="color"
+                          name="colorCardStatusCalling"
+                          value={localSettings.colorCardStatusCalling || "#facc15"}
+                          onChange={handleMonitorInputChange}
+                          className="w-8 h-6 rounded cursor-pointer border-0"
+                        />
+                        <span className="text-[10px] font-mono font-bold text-slate-600">
+                          {localSettings.colorCardStatusCalling || "#facc15"}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Menunggu</label>
+                      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg p-1 shadow-inner">
+                        <input
+                          type="color"
+                          name="colorCardStatusWaiting"
+                          value={localSettings.colorCardStatusWaiting || "#ffffff"}
+                          onChange={handleMonitorInputChange}
+                          className="w-8 h-6 rounded cursor-pointer border-0"
+                        />
+                        <span className="text-[10px] font-mono font-bold text-slate-600">
+                          {localSettings.colorCardStatusWaiting || "#ffffff"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>

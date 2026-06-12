@@ -36,11 +36,11 @@ export interface QueueItem {
 }
 
 export interface PrintSettings {
-  headerText: string;
-  subHeader: string;
-  footerText: string;
-  showLogo: boolean;
-  paperWidth: string; // e.g. "58mm", "80mm"
+  headerText?: string;
+  subHeader?: string;
+  footerText?: string;
+  showLogo?: boolean;
+  paperWidth?: string; // e.g. "58mm", "80mm"
   logoType?: "default" | "custom";
   customLogo?: string; // base64 string of high contrast logo
   logoPosition?: "top" | "side" | "none";
@@ -52,6 +52,28 @@ export interface PrintSettings {
   footerStyle?: "normal" | "bold" | "italic" | "bold-italic";
   dateTimeSize?: string;
   dateTimeStyle?: "normal" | "bold" | "italic" | "bold-italic";
+  useBluetoothPrintApp?: boolean;
+  useWebBluetooth?: boolean;
+  useRawBtApp?: boolean;
+  alamat?: string;
+  footerSatu?: string;
+  footerDua?: string;
+  showFooterDua?: boolean;
+  feedLines?: number;
+  cetakQr?: boolean;
+  namaInstansi?: string;
+  cabang?: string;
+  footer?: string;
+  logoSize?: number;
+  sizeNamaInstansi?: number;
+  sizeCabang?: number;
+  sizeAlamat?: number;
+  sizeFooterSatu?: number;
+  sizeFooterDua?: number;
+  sizeDateTime?: number;
+  sizeTeksNomorAntrian?: number;
+  sizeNomorAntrian?: number;
+  sizeLayanan?: number;
 }
 
 export interface MonitorSettings {
@@ -95,6 +117,16 @@ export interface MonitorSettings {
   colorClockTitle?: string; // Subtitle text color (e.g., "#FBBF24")
   colorDayDate?: string; // Day Date text color (e.g. "#FFFFFF")
   slideImages?: string[]; // Up to 10 custom slide images for "Mode Gambar / Saver"
+  textSizeCardHeader?: number; // Font size of card header (loket name) in px
+  textSizeCardSubtitle?: number; // Font size of card subtitle ("NOMOR ANTRIAN") in px
+  textSizeCardNumber?: number; // Font size of card number (e.g., A2) in px
+  textSizeCardStatus?: number; // Font size of card status (e.g., MENUNGGU) in px
+  colorCardHeader?: string; // Color of card header (loket name) text
+  colorCardSubtitle?: string; // Color of card subtitle ("NOMOR ANTRIAN") text
+  colorCardNumber?: string; // Color of card number text
+  colorCardStatus?: string; // Color of card status text
+  colorCardStatusCalling?: string; // Color of status when 'SEDANG DIPANGGIL'
+  colorCardStatusWaiting?: string; // Color of status when 'MENUNGGU'
 }
 
 // Backend Server Types
@@ -120,4 +152,67 @@ export interface CounterState {
   currentTicketCode: string | null;
   servedCount: number;
 }
+
+// Indonesian Legacy Type Aliases for code-level compatibility
+export type Pengguna = User & {
+  nama?: string; // some templates expect .nama instead of .name
+  loketId?: string;
+  loketNama?: string;
+};
+
+export interface Loket {
+  id: string;
+  name: string;
+  prefix: string;
+  status?: string;
+  layananIds?: string[];
+  service_name?: string;
+  serviceName?: string;
+  is_active?: boolean;
+  isActive?: boolean;
+  petugasId?: string | null;
+  petugasNama?: string | null;
+  currentNumber?: number;
+  currentCallingId?: string | null;
+}
+
+export type Layanan = {
+  id: string;
+  name: string;
+  nama?: string;
+  prefix: string;
+  kode?: string;
+  deskripsi?: string;
+};
+
+export interface Antrian {
+  id: string;
+  number: number;
+  nomor?: string;
+  nomorUrut?: number;
+  formattedNumber: string;
+  prefix: string;
+  status: "menunggu" | "memanggil" | "selesai" | "dilewati" | "waiting" | "calling" | "completed" | "skipped";
+  createdAt: string;
+  created_at?: string;
+  layananId: string;
+  layananNama: string;
+  layananKode?: string;
+  namaPelanggan?: string;
+  noHp?: string;
+  keperluan?: string;
+  calledAt?: string;
+  completedAt?: string;
+  loketId?: string;
+  loketName?: string;
+  pelangganNama?: string;
+  pelangganId?: string;
+  pelangganAlamat?: string;
+  pelangganHp?: string;
+  pelangganKeterangan?: string;
+}
+
+export type PrinterSettings = PrintSettings;
+
+
 

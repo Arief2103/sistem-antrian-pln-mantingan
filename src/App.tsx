@@ -110,6 +110,7 @@ export default function App() {
       footerText: "Terima kasih telah menggunakan pelayanan kami. Jauhi bahaya listrik untuk keluarga tercinta.",
       showLogo: true,
       paperWidth: "58mm",
+      useBluetoothPrintApp: false,
     };
     try {
       const saved = localStorage.getItem("pln_print_settings");
@@ -602,7 +603,8 @@ export default function App() {
   ) => {
     const voiceVolNormalized = voiceVolume / 100;
     const spokenNumber = convertNumberToIndonesianSpelling(number);
-    const textToSpeak = `Nomor antrean ${prefix} ... ${spokenNumber} ... silakan menuju ke ${loketName}`;
+    // Use lowercased prefix without triple-dots delay to speak "A satu" continuously
+    const textToSpeak = `Nomor antrean ${prefix.toLowerCase()} ${spokenNumber}, silakan menuju ke ${loketName}`;
 
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -630,7 +632,7 @@ export default function App() {
           window.speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(textToSpeak);
           utterance.lang = "id-ID";
-          utterance.rate = 0.76;
+          utterance.rate = 0.85;
           utterance.pitch = 1.05;
           utterance.volume = voiceVolNormalized;
 
@@ -649,7 +651,7 @@ export default function App() {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
         utterance.lang = "id-ID";
-        utterance.rate = 0.76;
+        utterance.rate = 0.85;
         utterance.pitch = 1.05;
         utterance.volume = voiceVolNormalized;
         window.speechSynthesis.speak(utterance);

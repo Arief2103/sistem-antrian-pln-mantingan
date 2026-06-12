@@ -1,713 +1,718 @@
-import React, { useState } from "react";
-import { PrintSettings, QueueItem } from "../../types";
-import { Printer, Type, Layout, Upload, Image as ImageIcon, Trash2 } from "lucide-react";
-import { printThermalReceipt } from "../../utils/printReceipt";
+import React, { useState } from 'react';
+import { db } from '../../config/supabase';
+import { PrinterSettings } from '../../types';
+import { Printer, Save, CheckCircle, Info, Building, MapPin, AlignLeft, Smartphone, RefreshCw, Bolt } from 'lucide-react';
+import { blePrinterManager } from '../../utils/blePrinter';
 
 interface PengaturanPrinterProps {
-  printSettings: PrintSettings;
-  onUpdatePrintSettings: (settings: PrintSettings) => void;
+  printSettings?: any;
+  onUpdatePrintSettings?: (settings: any) => void;
 }
 
-export default function PengaturanPrinter({
-  printSettings,
-  onUpdatePrintSettings,
-}: PengaturanPrinterProps) {
-  const [headerText, setHeaderText] = useState(printSettings.headerText || "");
-  const [subHeader, setSubHeader] = useState(printSettings.subHeader || "");
-  const [footerText, setFooterText] = useState(printSettings.footerText || "");
-  const [paperWidth, setPaperWidth] = useState(printSettings.paperWidth || "58mm");
-  const [logoType, setLogoType] = useState<"default" | "custom">(printSettings.logoType || "default");
-  const [customLogo, setCustomLogo] = useState<string>(printSettings.customLogo || "");
-  
-  // Custom logoPosition state with default fallbacks
-  const [logoPosition, setLogoPosition] = useState<"top" | "side" | "none">(
-    printSettings.logoPosition || (printSettings.showLogo === false ? "none" : "top")
-  );
+export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings }: PengaturanPrinterProps) {
+  const [settings, setSettings] = useState<PrinterSettings>(() => db.printerSettings.get());
+  const [savedSuccess, setSavedSuccess] = useState(false);
 
-  // States for text formatting configurations
-  const [headerSize, setHeaderSize] = useState<string>(printSettings.headerSize || "10");
-  const [headerStyle, setHeaderStyle] = useState<"normal" | "bold" | "italic" | "bold-italic">(printSettings.headerStyle || "bold");
-  
-  const [subHeaderSize, setSubHeaderSize] = useState<string>(printSettings.subHeaderSize || "8.5");
-  const [subHeaderStyle, setSubHeaderStyle] = useState<"normal" | "bold" | "italic" | "bold-italic">(printSettings.subHeaderStyle || "bold");
+  // Web Bluetooth state
+  const [bleConnected, setBleConnected] = useState(() => blePrinterManager.isConnected());
+  const [bleDeviceName, setBleDeviceName] = useState(() => blePrinterManager.getDeviceName());
+  const [bleError, setBleError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
-  const [footerSize, setFooterSize] = useState<string>(printSettings.footerSize || "9");
-  const [footerStyle, setFooterStyle] = useState<"normal" | "bold" | "italic" | "bold-italic">(printSettings.footerStyle || "italic");
+  const handleConnectBLE = async () => {
+    try {
+      setBleError(null);
+      setConnecting(true);
+      const name = await blePrinterManager.connect();
+      if (name) {
+        setBleConnected(true);
+        setBleDeviceName(name);
+      }
+    } catch (err: any) {
+      setBleError(err.message || "Gagal menghubungkan Bluetooth. Pastikan bluetooth aktif dan berikan izin.");
+    } finally {
+      setConnecting(false);
+    }
+  };
 
-  const [dateTimeSize, setDateTimeSize] = useState<string>(printSettings.dateTimeSize || "8.5");
-  const [dateTimeStyle, setDateTimeStyle] = useState<"normal" | "bold" | "italic" | "bold-italic">(printSettings.dateTimeStyle || "normal");
+  const handleDisconnectBLE = () => {
+    blePrinterManager.disconnect();
+    setBleConnected(false);
+    setBleDeviceName(null);
+  };
+
+  const handleTestPrintBLE = async () => {
+    try {
+      setBleError(null);
+      const mockTicket = {
+        nomor: "B-12",
+        formattedNumber: "B-12",
+        layananNama: "TEST PRINT DIRECT",
+        serviceName: "TEST PRINT DIRECT",
+        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+      await blePrinterManager.printTicketDirect(mockTicket, settings);
+    } catch (err: any) {
+      setBleError("Gagal test print: " + err.message);
+    }
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    if (file.size > 1024 * 1024 * 2) {
+      alert("Ukuran file gambar minimalis terlalu besar. Maksimal 2MB.");
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        
-        const maxW = 180;
-        const scale = maxW / img.width;
-        const targetW = img.width > maxW ? maxW : img.width;
-        const targetH = img.width > maxW ? img.height * scale : img.height;
-
-        canvas.width = targetW;
-        canvas.height = targetH;
-
-        if (ctx) {
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = "high";
-          ctx.drawImage(img, 0, 0, targetW, targetH);
-          const base64 = canvas.toDataURL("image/png");
-          setCustomLogo(base64);
-          setLogoType("custom");
-        }
-      };
-      img.src = event.target?.result as string;
+      const base64 = event.target?.result as string;
+      setSettings(prev => ({
+        ...prev,
+        logoType: "custom",
+        customLogo: base64
+      }));
     };
     reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const updated: PrintSettings = {
-      headerText: headerText.trim(),
-      subHeader: subHeader.trim(),
-      footerText: footerText.trim(),
-      showLogo: logoPosition !== "none",
-      paperWidth,
-      logoType,
-      customLogo,
-      logoPosition,
-      headerSize,
-      headerStyle,
-      subHeaderSize,
-      subHeaderStyle,
-      footerSize,
-      footerStyle,
-      dateTimeSize,
-      dateTimeStyle,
-    };
-
-    onUpdatePrintSettings(updated);
-    alert("Setelan cetak thermal berhasil diperbarui!");
-  };
-
-  const getStyleObj = (styleVal: string | undefined, defaultStyle: string) => {
-    const style = styleVal || defaultStyle;
-    const styleObj: React.CSSProperties = {};
-    if (style === "bold") {
-      styleObj.fontWeight = "bold";
-      styleObj.fontStyle = "normal";
-    } else if (style === "italic") {
-      styleObj.fontWeight = "normal";
-      styleObj.fontStyle = "italic";
-    } else if (style === "bold-italic") {
-      styleObj.fontWeight = "bold";
-      styleObj.fontStyle = "italic";
-    } else {
-      styleObj.fontWeight = "normal";
-      styleObj.fontStyle = "normal";
+    db.printerSettings.save(settings);
+    setSavedSuccess(true);
+    
+    if (onUpdatePrintSettings) {
+      onUpdatePrintSettings({
+        headerText: settings.namaInstansi,
+        subHeader: settings.cabang,
+        namaInstansi: settings.namaInstansi,
+        cabang: settings.cabang,
+        alamat: settings.alamat,
+        footerSatu: settings.footerSatu,
+        footerDua: settings.footerDua,
+        footerText: settings.footer || settings.footerSatu,
+        showLogo: settings.showLogo !== undefined ? settings.showLogo : true,
+        logoType: settings.logoType || "default",
+        customLogo: settings.customLogo || "",
+        showFooterDua: settings.showFooterDua !== undefined ? settings.showFooterDua : true,
+        feedLines: settings.feedLines !== undefined ? Number(settings.feedLines) : 1,
+        paperWidth: settings.paperWidth || "58mm",
+        useBluetoothPrintApp: false,
+        useWebBluetooth: true,
+        useRawBtApp: false,
+        cetakQr: false,
+        
+        // Custom sizes
+        logoSize: settings.logoSize || 48,
+        sizeNamaInstansi: settings.sizeNamaInstansi || 14,
+        sizeCabang: settings.sizeCabang || 11,
+        sizeAlamat: settings.sizeAlamat || 8,
+        sizeFooterSatu: settings.sizeFooterSatu || 8,
+        sizeFooterDua: settings.sizeFooterDua || 8,
+        sizeDateTime: settings.sizeDateTime || 8,
+        sizeTeksNomorAntrian: settings.sizeTeksNomorAntrian || 9,
+        sizeNomorAntrian: settings.sizeNomorAntrian || 40,
+        sizeLayanan: settings.sizeLayanan || 10,
+      });
     }
-    return styleObj;
-  };
 
-  const getHeaderSizeStyle = (sizeVal: string | undefined) => {
-    const size = sizeVal || "10";
-    if (size === "normal") return { fontSize: "9.5px" };
-    if (size === "large") return { fontSize: "11px" };
-    if (size === "xlarge") return { fontSize: "13px" };
-    const num = parseFloat(size);
-    if (!isNaN(num)) return { fontSize: `${num}px` };
-    return { fontSize: "10px" };
-  };
-
-  const getSubHeaderSizeStyle = (sizeVal: string | undefined) => {
-    const size = sizeVal || "8.5";
-    if (size === "normal") return { fontSize: "7.5px" };
-    if (size === "large") return { fontSize: "9px" };
-    const num = parseFloat(size);
-    if (!isNaN(num)) return { fontSize: `${num}px` };
-    return { fontSize: "8.5px" };
-  };
-
-  const getFooterSizeStyle = (sizeVal: string | undefined) => {
-    const size = sizeVal || "9";
-    if (size === "normal") return { fontSize: "7.5px" };
-    if (size === "large") return { fontSize: "9.5px" };
-    const num = parseFloat(size);
-    if (!isNaN(num)) return { fontSize: `${num}px` };
-    return { fontSize: "9px" };
-  };
-
-  const getDateTimeSizeStyle = (sizeVal: string | undefined) => {
-    const size = sizeVal || "8.5";
-    if (size === "normal") return { fontSize: "7.5px" };
-    if (size === "large") return { fontSize: "9.5px" };
-    const num = parseFloat(size);
-    if (!isNaN(num)) return { fontSize: `${num}px` };
-    return { fontSize: "8.5px" };
+    setTimeout(() => setSavedSuccess(false), 2500);
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-6 text-left" id="panel-setup-printer">
-      
-      <div className="border-b pb-4 mb-6 flex justify-between items-center">
-        <h3 className="font-bold text-slate-800 text-sm tracking-wide">
-          Setelan Cetak Struk Antrian
-        </h3>
+    <div className="p-6 space-y-6 max-h-[calc(100vh-64px)] overflow-y-auto font-sans" id="admin-printer-settings">
+      {/* Upper header */}
+      <div className="border-b border-gray-200 pb-5">
+        <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center space-x-2">
+          <Printer className="w-5 h-5 text-[#005B9C]" />
+          <span>Pengaturan Tiket Printer Kiosk</span>
+        </h1>
+        <p className="text-xs text-gray-500 mt-1">
+          Atur teks kop surat, info cabang, alamat, catatan kaki, serta atur ukuran font pada slip antrian secara presisi.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* Left column: Parameters Input Form */}
-        <div className="lg:col-span-7">
-          <form onSubmit={handleSubmit} className="space-y-6">
+      {savedSuccess && (
+        <div className="bg-emerald-50 border border-emerald-500/50 rounded-lg p-3.5 text-xs font-medium text-emerald-800 flex items-center space-x-2 animate-pulse">
+          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>Setelan printer berhasil diperbarui dan disimpan!</span>
+        </div>
+      )}
+
+      {/* Main Settings Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <form onSubmit={handleSubmit} className="lg:col-span-8 bg-white border border-gray-250 p-6 rounded-xl shadow-sm space-y-6" id="printer-config-form">
+          
+          {/* SECTION 1: Informasi Teks Slip Antrian */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-[#005B9C] uppercase tracking-wider pb-1 border-b border-gray-100">
+              1. Teks Kop & Kaki Slip (Boleh Huruf Besar & Kecil)
+            </h3>
             
-            {/* Paper Width Selection */}
-            <div className="pb-4 border-b border-slate-200">
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-2">
-                Format Lebar Struk
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nama Instansi */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1.5 flex items-center space-x-1">
+                  <Building className="w-3.5 h-3.5 text-gray-450" />
+                  <span>Nama Instansi</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={settings.namaInstansi}
+                  onChange={(e) => setSettings({ ...settings, namaInstansi: e.target.value })}
+                  placeholder="Contoh: PT PLN (Persero) UP3 Madiun"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#005B9C]"
+                />
+              </div>
+
+              {/* Cabang */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1.5 flex items-center space-x-1">
+                  <Building className="w-3.5 h-3.5 text-gray-450" />
+                  <span>Unit Pelaksana / Sub Unit</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={settings.cabang}
+                  onChange={(e) => setSettings({ ...settings, cabang: e.target.value })}
+                  placeholder="Contoh: ULP Mantingan"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#005B9C]"
+                />
+              </div>
+            </div>
+
+            {/* Alamat Unit */}
+            <div>
+              <label className="block text-[11px] font-bold text-gray-600 mb-1.5 flex items-center space-x-1">
+                <MapPin className="w-3.5 h-3.5 text-gray-450" />
+                <span>Alamat Kantor</span>
               </label>
-              <div className="flex gap-6">
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="paperWidth"
-                    value="58mm"
-                    checked={paperWidth === "58mm"}
-                    onChange={(e) => setPaperWidth(e.target.value)}
-                    className="accent-[#00A19D]"
-                  />
-                  Lebar 58 mm (POS Kecil)
-                </label>
-                
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="paperWidth"
-                    value="80mm"
-                    checked={paperWidth === "80mm"}
-                    onChange={(e) => setPaperWidth(e.target.value)}
-                    className="accent-[#00A19D]"
-                  />
-                  Lebar 80 mm (POS Lebar)
-                </label>
-              </div>
+              <input
+                type="text"
+                required
+                value={settings.alamat}
+                onChange={(e) => setSettings({ ...settings, alamat: e.target.value })}
+                placeholder="Contoh: Jl. Raya Mantingan, Ngawi, Jawa Timur"
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#005B9C]"
+              />
             </div>
 
-            {/* Corporate Header Text */}
-            <div className="space-y-3 pb-5 border-b border-slate-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Footer Satu */}
               <div>
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-1">
-                  Nama Instansi / Header Struk
+                <label className="block text-[11px] font-bold text-gray-600 mb-1.5 flex items-center space-x-1">
+                  <AlignLeft className="w-3.5 h-3.5 text-gray-450" />
+                  <span>Catatan Kaki 1</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="Contoh: PT PLN (PERSERO)"
-                  value={headerText}
-                  onChange={(e) => setHeaderText(e.target.value)}
-                  className="w-full bg-white border border-slate-350 p-2 rounded text-xs font-bold text-slate-800 focus:outline-none focus:border-[#00a19d]"
                   required
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Ukuran Font (pt):</label>
-                  <div className="flex">
-                    <input
-                      type="text"
-                      value={headerSize}
-                      onChange={(e) => setHeaderSize(e.target.value)}
-                      className="block w-20 border border-slate-350 rounded-l p-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:border-[#00a19d]"
-                      placeholder="Contoh: 10"
-                    />
-                    <select
-                      value={["8", "9", "9.5", "10", "11", "12", "13", "14", "16", "18", "20", "22", "24", "26", "28", "36", "48", "72"].includes(headerSize) ? headerSize : ""}
-                      onChange={(e) => {
-                        if (e.target.value) setHeaderSize(e.target.value);
-                      }}
-                      className="block border-y border-r border-slate-350 rounded-r p-1.5 text-xs text-slate-705 font-medium bg-slate-55 cursor-pointer focus:outline-none focus:border-[#00a19d]"
-                    >
-                      <option value="">Pilih...</option>
-                      <option value="8">8 pt</option>
-                      <option value="9">9 pt</option>
-                      <option value="9.5">9.5 pt</option>
-                      <option value="10">10 pt</option>
-                      <option value="11">11 pt</option>
-                      <option value="12">12 pt</option>
-                      <option value="13">13 pt</option>
-                      <option value="14">14 pt</option>
-                      <option value="16">16 pt</option>
-                      <option value="18">18 pt</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Gaya Font:</label>
-                  <select
-                    value={headerStyle}
-                    onChange={(e) => setHeaderStyle(e.target.value as any)}
-                    className="block w-full border border-slate-350 rounded p-1.5 text-xs text-slate-705 font-medium bg-white cursor-pointer focus:outline-none focus:border-[#00a19d]"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="bold">Tebal (Bold)</option>
-                    <option value="italic">Miring (Italic)</option>
-                    <option value="bold-italic">Tebal Miring</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Locality Subheader */}
-            <div className="space-y-3 pb-5 border-b border-slate-200">
-              <div>
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-1">
-                  Subtitel Alamat / Lokasi Kantor
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Jl. Raya Mantingan, Ngawi, Jawa Timur"
-                  value={subHeader}
-                  onChange={(e) => setSubHeader(e.target.value)}
-                  className="w-full bg-white border border-slate-350 p-2 rounded text-xs text-slate-800 focus:outline-none focus:border-[#00a19d]"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Ukuran Font (pt):</label>
-                  <div className="flex">
-                    <input
-                      type="text"
-                      value={subHeaderSize}
-                      onChange={(e) => setSubHeaderSize(e.target.value)}
-                      className="block w-20 border border-slate-350 rounded-l p-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:border-[#00a19d]"
-                      placeholder="Contoh: 8.5"
-                    />
-                    <select
-                      value={["7", "7.5", "8", "8.5", "9", "9.5", "10", "11", "12", "14", "16"].includes(subHeaderSize) ? subHeaderSize : ""}
-                      onChange={(e) => {
-                        if (e.target.value) setSubHeaderSize(e.target.value);
-                      }}
-                      className="block border-y border-r border-slate-350 rounded-r p-1.5 text-xs text-slate-705 font-medium bg-slate-55 cursor-pointer focus:outline-none focus:border-[#00a19d]"
-                    >
-                      <option value="">Pilih...</option>
-                      <option value="7">7 pt</option>
-                      <option value="7.5">7.5 pt</option>
-                      <option value="8">8 pt</option>
-                      <option value="8.5">8.5 pt</option>
-                      <option value="9">9 pt</option>
-                      <option value="9.5">9.5 pt</option>
-                      <option value="10">10 pt</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Gaya Font:</label>
-                  <select
-                    value={subHeaderStyle}
-                    onChange={(e) => setSubHeaderStyle(e.target.value as any)}
-                    className="block w-full border border-slate-350 rounded p-1.5 text-xs text-slate-705 font-medium bg-white cursor-pointer focus:outline-none focus:border-[#00a19d]"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="bold">Tebal (Bold)</option>
-                    <option value="italic">Miring (Italic)</option>
-                    <option value="bold-italic">Tebal Miring</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Greetings Message footer */}
-            <div className="space-y-3 pb-5 border-b border-slate-200">
-              <div>
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-1">
-                  Pesan Kaki Struk (Footer)
-                </label>
-                <input
-                  type="text"
+                  value={settings.footerSatu}
+                  onChange={(e) => setSettings({ ...settings, footerSatu: e.target.value })}
                   placeholder="Contoh: Terima kasih atas kunjungan anda."
-                  value={footerText}
-                  onChange={(e) => setFooterText(e.target.value)}
-                  className="w-full bg-white border border-slate-350 p-2 rounded text-xs text-slate-800 focus:outline-none focus:border-[#00a19d]"
-                  required
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#005B9C]"
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Ukuran Font (pt):</label>
-                  <div className="flex">
+
+              {/* Footer Dua */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-bold text-gray-600 flex items-center space-x-1">
+                    <AlignLeft className="w-3.5 h-3.5 text-gray-450" />
+                    <span>Catatan Kaki 2</span>
+                  </label>
+                  <label className="flex items-center space-x-1 text-[10px] text-[#005B9C] font-semibold cursor-pointer select-none">
                     <input
-                      type="text"
-                      value={footerSize}
-                      onChange={(e) => setFooterSize(e.target.value)}
-                      className="block w-20 border border-slate-350 rounded-l p-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:border-[#00a19d]"
-                      placeholder="Contoh: 9"
+                      type="checkbox"
+                      checked={settings.showFooterDua !== false}
+                      onChange={(e) => setSettings({ ...settings, showFooterDua: e.target.checked })}
+                      className="w-3.5 h-3.5 accent-[#005B9C] rounded cursor-pointer"
                     />
-                    <select
-                      value={["7", "7.5", "8", "8.5", "9", "9.5", "10", "12", "14"].includes(footerSize) ? footerSize : ""}
-                      onChange={(e) => {
-                        if (e.target.value) setFooterSize(e.target.value);
-                      }}
-                      className="block border-y border-r border-slate-350 rounded-r p-1.5 text-xs text-slate-705 font-medium bg-slate-55 cursor-pointer focus:outline-none focus:border-[#00a19d]"
-                    >
-                      <option value="">Pilih...</option>
-                      <option value="7">7 pt</option>
-                      <option value="7.5">7.5 pt</option>
-                      <option value="8">8 pt</option>
-                      <option value="8.5">8.5 pt</option>
-                      <option value="9">9 pt</option>
-                      <option value="9.5">9.5 pt</option>
-                      <option value="10">10 pt</option>
-                    </select>
-                  </div>
+                    <span>Aktifkan</span>
+                  </label>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Gaya Font:</label>
-                  <select
-                    value={footerStyle}
-                    onChange={(e) => setFooterStyle(e.target.value as any)}
-                    className="block w-full border border-slate-350 rounded p-1.5 text-xs text-slate-705 font-medium bg-white cursor-pointer focus:outline-none focus:border-[#00a19d]"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="bold">Tebal (Bold)</option>
-                    <option value="italic">Miring (Italic)</option>
-                    <option value="bold-italic">Tebal Miring</option>
-                  </select>
-                </div>
+                <input
+                  type="text"
+                  required={settings.showFooterDua !== false}
+                  disabled={settings.showFooterDua === false}
+                  value={settings.footerDua}
+                  onChange={(e) => setSettings({ ...settings, footerDua: e.target.value })}
+                  placeholder="Contoh: Jauhi bahaya listrik demi keselamatan"
+                  className={`w-full border rounded-lg px-3 py-2 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#005B9C] ${
+                    settings.showFooterDua === false ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border-gray-300'
+                  }`}
+                />
               </div>
             </div>
+          </div>
 
-            {/* Date and Time Settings */}
-            <div className="space-y-3 pb-5 border-b border-slate-200">
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-1">
-                Format Tanggal & Waktu (Tanggal-Pukul)
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* SECTION 2: Sizing Controls */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-xs font-bold text-[#005B9C] uppercase tracking-wider pb-1 border-b border-gray-100">
+              2. Pengaturan Ukuran Teks & Logo PLN
+            </h3>
+
+            {/* Show Logo Toggle */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
+              <div className="flex items-center justify-between">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Ukuran Font (pt):</label>
-                  <div className="flex">
-                    <input
-                      type="text"
-                      value={dateTimeSize}
-                      onChange={(e) => setDateTimeSize(e.target.value)}
-                      className="block w-20 border border-slate-350 rounded-l p-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:border-[#00a19d]"
-                      placeholder="Contoh: 8.5"
-                    />
+                  <span className="block text-xs font-bold text-gray-700">Tampilkan Logo Diatas Judul</span>
+                  <span className="text-[10px] text-gray-400 block font-normal">Tampilkan gambar logo instansi PLN diposisi paling atas strip tiket.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.showLogo}
+                  onChange={(e) => setSettings({ ...settings, showLogo: e.target.checked })}
+                  className="w-4 h-4 border-gray-350 text-[#005B9C] rounded pointer-events-auto accent-[#005B9C] cursor-pointer"
+                />
+              </div>
+
+              {settings.showLogo && (
+                <div className="pt-3 border-t border-gray-200/60 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-600 mb-1">Tipe Logo</label>
                     <select
-                      value={["7", "7.5", "8", "8.5", "9", "9.5", "10"].includes(dateTimeSize) ? dateTimeSize : ""}
-                      onChange={(e) => {
-                        if (e.target.value) setDateTimeSize(e.target.value);
-                      }}
-                      className="block border-y border-r border-slate-350 rounded-r p-1.5 text-xs text-slate-705 font-medium bg-slate-55 cursor-pointer focus:outline-none focus:border-[#00a19d]"
+                      value={settings.logoType || "default"}
+                      onChange={(e) => setSettings({ ...settings, logoType: e.target.value as any })}
+                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#005B9C]"
                     >
-                      <option value="">Pilih...</option>
-                      <option value="7">7 pt</option>
-                      <option value="7.5">7.5 pt</option>
-                      <option value="8">8 pt</option>
-                      <option value="8.5">8.5 pt</option>
-                      <option value="9">9 pt</option>
-                      <option value="9.5">9.5 pt</option>
-                      <option value="10">10 pt</option>
+                      <option value="default">Default PLN (⚡)</option>
+                      <option value="custom">Upload Logo Kustom (Gambar)</option>
                     </select>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Gaya Font:</label>
-                  <select
-                    value={dateTimeStyle}
-                    onChange={(e) => setDateTimeStyle(e.target.value as any)}
-                    className="block w-full border border-slate-350 rounded p-1.5 text-xs text-slate-705 font-medium bg-white cursor-pointer focus:outline-none focus:border-[#00a19d]"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="bold">Tebal (Bold)</option>
-                    <option value="italic">Miring (Italic)</option>
-                    <option value="bold-italic">Tebal Miring</option>
-                  </select>
-                </div>
-              </div>
-            </div>
 
-            {/* Logo Options Layout Selector */}
-            <div className="space-y-4 pb-5">
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest">
-                Logo Instansi
-              </label>
-              
-              <div className="grid grid-cols-3 gap-2 border border-slate-300 rounded p-1 bg-slate-50">
-                <button
-                  type="button"
-                  onClick={() => setLogoPosition("none")}
-                  className={`p-2.5 text-center text-xs font-semibold rounded cursor-pointer transition-all ${
-                    logoPosition === "none"
-                      ? "bg-[#00A19D] text-white font-bold"
-                      : "bg-transparent text-slate-600 hover:bg-slate-205"
-                  }`}
-                >
-                  Tanpa Logo
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setLogoPosition("top")}
-                  className={`p-2.5 text-center text-xs font-semibold rounded cursor-pointer transition-all ${
-                    logoPosition === "top"
-                      ? "bg-[#00A19D] text-white font-bold"
-                      : "bg-transparent text-slate-600 hover:bg-slate-205"
-                  }`}
-                >
-                  Di Atas Teks
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setLogoPosition("side")}
-                  className={`p-2.5 text-center text-xs font-semibold rounded cursor-pointer transition-all ${
-                    logoPosition === "side"
-                      ? "bg-[#00A19D] text-white font-bold"
-                      : "bg-transparent text-slate-600 hover:bg-slate-205"
-                  }`}
-                >
-                  Di Samping Teks
-                </button>
-              </div>
-
-              {logoPosition !== "none" && (
-                <div className="pt-3 space-y-3 border-t border-slate-200">
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                  {settings.logoType === "custom" && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-600 mb-1">Pilih File Logo</label>
                       <input
-                        type="radio"
-                        name="logoChoice"
-                        checked={logoType === "default"}
-                        onChange={() => setLogoType("default")}
-                        className="accent-[#00A19D]"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="w-full text-xs text-gray-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 file:text-[#005B9C] hover:file:bg-blue-100 cursor-pointer"
                       />
-                      Logo Sistem (PLN)
-                    </label>
-                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="logoChoice"
-                        checked={logoType === "custom"}
-                        onChange={() => setLogoType("custom")}
-                        className="accent-[#00A19D]"
-                      />
-                      Gunakan Logo Kustom
-                    </label>
-                  </div>
-
-                  {logoType === "custom" && (
-                    <div className="space-y-2 mt-2">
-                      <span className="text-[11px] font-semibold text-slate-600 block">Pilih File Logo:</span>
-                      <div className="flex items-center gap-4 bg-slate-50 p-3 rounded border border-slate-300">
-                        <div className="shrink-0 w-12 h-12 bg-white border border-slate-200 rounded overflow-hidden flex items-center justify-center">
-                          {customLogo ? (
-                            <img src={customLogo} alt="Logo preview" className="w-full h-full object-contain p-1" referrerPolicy="no-referrer" />
-                          ) : (
-                            <ImageIcon className="w-5 h-5 text-slate-400" />
-                          )}
+                      {settings.customLogo && (
+                        <div className="flex items-center space-x-2 mt-1.5">
+                          <span className="text-[9px] text-emerald-600 font-semibold">✓ Gambar berhasil diunggah</span>
+                          <button
+                            type="button"
+                            onClick={() => setSettings(prev => ({ ...prev, customLogo: "" }))}
+                            className="text-[9px] text-rose-600 hover:underline font-medium cursor-pointer"
+                          >
+                            Hapus
+                          </button>
                         </div>
-                        
-                        <div className="flex-1 space-y-1 text-left">
-                          <div className="flex items-center gap-2">
-                            <label className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs rounded cursor-pointer transition-all flex items-center gap-1">
-                              <Upload className="w-3.5 h-3.5 text-slate-500" />
-                              Pilih File Logo
-                              <input
-                                type="file"
-                                accept="image/png, image/jpeg, image/jpg"
-                                onChange={handleLogoUpload}
-                                className="hidden"
-                              />
-                            </label>
-                            {customLogo && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCustomLogo("");
-                                  setLogoType("default");
-                                }}
-                                className="p-1 px-2.5 bg-white hover:bg-red-50 text-red-600 border border-slate-300 hover:border-red-300 rounded transition-all text-xs font-semibold"
-                              >
-                                Atur Ulang
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Form actions Buttons */}
-            <div className="border-t pt-5 flex justify-between items-center gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  const testSettings: PrintSettings = {
-                    headerText: headerText.trim() || "PT PLN (PERSERO)",
-                    subHeader: subHeader.trim() || "ULP MANTINGAN",
-                    footerText: footerText.trim() || "Terima kasih atas kunjungan Anda.",
-                    showLogo: logoPosition !== "none",
-                    paperWidth,
-                    logoType,
-                    customLogo,
-                    logoPosition,
-                    headerSize,
-                    headerStyle,
-                    subHeaderSize,
-                    subHeaderStyle,
-                    footerSize,
-                    footerStyle,
-                    dateTimeSize,
-                    dateTimeStyle,
-                  };
-                  const mockQueue: QueueItem = {
-                    id: "test-print-id",
-                    number: 14,
-                    formattedNumber: "A14",
-                    serviceName: "PELAYANAN PELANGGAN",
-                    prefix: "A",
-                    status: "waiting",
-                    createdAt: new Date().toISOString(),
-                    pelangganNama: "ARIEF PRANATA (TEST)",
-                    pelangganId: "538579236059",
-                    pelangganHp: "081234567890",
-                    pelangganAlamat: "Kantor PLN ULP Mantingan, Ngawi",
-                    pelangganKeterangan: "Uji Coba Cetak Struk Kertas POS Thermal",
-                  };
-                  printThermalReceipt(mockQueue, testSettings);
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider rounded transition-all border border-slate-300 flex items-center justify-center gap-1.5 cursor-pointer"
-                title="Sistem akan menguji hasil cetakan langsung pada printer thermal"
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-500" />
-                Test Cetak Struk
-              </button>
-
-              <button
-                type="submit"
-                className="px-5 py-2 bg-[#00A19D] hover:bg-teal-700 text-white font-bold text-xs uppercase tracking-wider rounded transition-all shadow-sm cursor-pointer"
-              >
-                Simpan Setelan Struk
-              </button>
-            </div>
-
-          </form>
-        </div>
-
-        {/* Right column: LIVE REALTIME RECEIPT PREVIEW (lg:col-span-5) */}
-        <div className="lg:col-span-5 flex flex-col items-center bg-slate-50 p-6 rounded-2xl border border-slate-200/80">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">
-            Live Preview Struk Kiosk
-          </span>
-          
-          {/* Simulated Physical Thermal Ticket Container */}
-          <div 
-            className="bg-white border-2 border-slate-300 shadow-md relative overflow-hidden transition-all duration-300 p-5 flex flex-col items-center text-slate-900 select-none text-center border-t-[#00A19D] border-t-4"
-            style={{
-              width: paperWidth === "80mm" ? "290px" : "240px",
-              fontFamily: "'Arial', 'Helvetica', 'sans-serif', 'system-ui'",
-            }}
-            id="admin-receipt-live-preview"
-          >
-            {/* Top wavy jagged marks simulation */}
-            <div className="absolute top-0 left-0 right-0 h-1 flex gap-1 justify-center overflow-hidden">
-              {Array.from({ length: 15 }).map((_, i) => (
-                <div key={i} className="w-3 h-3 bg-slate-100 rotate-45 transform -translate-y-1.5 shrink-0"></div>
-              ))}
-            </div>
-
-            {/* Header section based on logoPosition */}
-            <div className={`w-full flex ${logoPosition === "side" ? "flex-row items-center justify-start text-left gap-3" : "flex-col items-center justify-center text-center gap-2"} mt-2`}>
-              {logoPosition !== "none" && (
-                logoType === "custom" && customLogo ? (
-                  <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded p-0.5">
-                    <img src={customLogo} alt="Logo" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
+              {/* Logo Size */}
+              {settings.showLogo !== false && (
+                <div>
+                  <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                    <span>Ukuran Logo PLN</span>
+                    <span className="text-[#005B9C]">{settings.logoSize || 48} px</span>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center shrink-0">
-                    <div className="w-6 h-8 bg-[#FFE600] border border-slate-950 rounded relative overflow-hidden flex flex-col items-center justify-center">
-                      <div className="text-red-500 font-extrabold text-sm select-none z-10 leading-none mt-[-2px]">⚡</div>
-                      <div className="absolute bottom-1 left-0.5 right-0.5 h-[4px] flex flex-col gap-[1px] z-0">
-                        <div className="h-[1.5px] bg-[#005FA2] rounded-sm w-full"></div>
-                        <div className="h-[1.5px] bg-[#005FA2] rounded-sm w-full"></div>
-                      </div>
-                    </div>
-                  </div>
-                )
+                  <input
+                    type="range"
+                    min="30"
+                    max="100"
+                    value={settings.logoSize || 48}
+                    onChange={(e) => setSettings({ ...settings, logoSize: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                  />
+                </div>
               )}
-              
-              <div className={`flex-1 min-w-0 ${logoPosition === "side" ? "text-left" : "text-center"}`}>
-                <h4 
-                  className="text-slate-900 uppercase tracking-wide leading-tight"
-                  style={{ ...getHeaderSizeStyle(headerSize), ...getStyleObj(headerStyle, "bold") }}
-                >
-                  {headerText.trim() || "PT PLN (PERSERO)"}
-                </h4>
-                <p 
-                  className="text-slate-500 mt-1 leading-snug"
-                  style={{ ...getSubHeaderSizeStyle(subHeaderSize), ...getStyleObj(subHeaderStyle, "bold") }}
-                >
-                  {subHeader.trim() || "Jl. Raya Mantingan, Ngawi, Jawa Timur"}
+
+              {/* Nama Instansi Font Size */}
+              <div>
+                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                  <span>Ukuran Font Nama Instansi</span>
+                  <span className="text-[#005B9C]">{settings.sizeNamaInstansi || 14} px</span>
+                </div>
+                <input
+                  type="range"
+                  min="10"
+                  max="32"
+                  value={settings.sizeNamaInstansi || 14}
+                  onChange={(e) => setSettings({ ...settings, sizeNamaInstansi: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+              </div>
+
+              {/* Cabang/Subheader Font Size */}
+              <div>
+                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                  <span>Ukuran Font Unit Pelaksana</span>
+                  <span className="text-[#005B9C]">{settings.sizeCabang || 11} px</span>
+                </div>
+                <input
+                  type="range"
+                  min="8"
+                  max="24"
+                  value={settings.sizeCabang || 11}
+                  onChange={(e) => setSettings({ ...settings, sizeCabang: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+              </div>
+
+              {/* Alamat Font Size */}
+              <div>
+                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                  <span>Ukuran Font Alamat Slip</span>
+                  <span className="text-[#005B9C]">{settings.sizeAlamat || 8} px</span>
+                </div>
+                <input
+                  type="range"
+                  min="6"
+                  max="20"
+                  value={settings.sizeAlamat || 8}
+                  onChange={(e) => setSettings({ ...settings, sizeAlamat: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+              </div>
+
+              {/* Teks No Antrean Font Size */}
+              <div>
+                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                  <span>Ukuran Teks "Nomor Antrian Anda"</span>
+                  <span className="text-[#005B9C]">{settings.sizeTeksNomorAntrian || 9} px</span>
+                </div>
+                <input
+                  type="range"
+                  min="8"
+                  max="20"
+                  value={settings.sizeTeksNomorAntrian || 9}
+                  onChange={(e) => setSettings({ ...settings, sizeTeksNomorAntrian: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+              </div>
+
+              {/* Nilai Nomor Antrean Font Size */}
+              <div>
+                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                  <span>Ukuran Font Nomor Antrian (B-12)</span>
+                  <span className="text-[#005B9C]">{settings.sizeNomorAntrian || 40} px</span>
+                </div>
+                <input
+                  type="range"
+                  min="24"
+                  max="64"
+                  value={settings.sizeNomorAntrian || 40}
+                  onChange={(e) => setSettings({ ...settings, sizeNomorAntrian: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+              </div>
+
+              {/* Layanan Font Size */}
+              <div>
+                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                  <span>Ukuran Font Nama Layanan</span>
+                  <span className="text-[#005B9C]">{settings.sizeLayanan || 10} px</span>
+                </div>
+                <input
+                  type="range"
+                  min="8"
+                  max="20"
+                  value={settings.sizeLayanan || 10}
+                  onChange={(e) => setSettings({ ...settings, sizeLayanan: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+              </div>
+
+              {/* Tanggal & Waktu Font Size */}
+              <div>
+                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                  <span>Ukuran Font Waktu Cetak</span>
+                  <span className="text-[#005B9C]">{settings.sizeDateTime || 8} px</span>
+                </div>
+                <input
+                  type="range"
+                  min="6"
+                  max="18"
+                  value={settings.sizeDateTime || 8}
+                  onChange={(e) => setSettings({ ...settings, sizeDateTime: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+              </div>
+
+              {/* Kaki 1 Font Size */}
+              <div>
+                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                  <span>Ukuran Font Kaki 1</span>
+                  <span className="text-[#005B9C]">{settings.sizeFooterSatu || 8} px</span>
+                </div>
+                <input
+                  type="range"
+                  min="6"
+                  max="18"
+                  value={settings.sizeFooterSatu || 8}
+                  onChange={(e) => setSettings({ ...settings, sizeFooterSatu: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+              </div>
+
+              {/* Kaki 2 Font Size */}
+              <div>
+                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
+                  <span>Ukuran Font Kaki 2</span>
+                  <span className="text-[#005B9C]">{settings.sizeFooterDua || 8} px</span>
+                </div>
+                <input
+                  type="range"
+                  min="6"
+                  max="18"
+                  value={settings.sizeFooterDua || 8}
+                  onChange={(e) => setSettings({ ...settings, sizeFooterDua: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+              </div>
+
+              {/* Trailing Feed Lines / Spacing Control */}
+              <div className="md:col-span-2 bg-[#005B9C]/5 p-3 rounded-lg border border-[#005B9C]/10 mt-2">
+                <div className="flex justify-between text-[11px] font-semibold text-[#005B9C] mb-1.5">
+                  <span className="flex items-center space-x-1.5">
+                    <span>✂️</span>
+                    <span>Jarak Potong Kertas Antar Tiket (Baris Kosong)</span>
+                  </span>
+                  <span className="bg-blue-100 text-[#005B9C] px-2 py-0.5 rounded text-[10px] font-bold">
+                    {settings.feedLines !== undefined ? settings.feedLines : 1} Baris
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="4"
+                  value={settings.feedLines !== undefined ? settings.feedLines : 1}
+                  onChange={(e) => setSettings({ ...settings, feedLines: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
+                />
+                <p className="text-[10px] text-gray-500 mt-1 font-normal leading-normal">
+                  Atur slider ke <strong>0 atau 1 Baris</strong> untuk merapatkan jarak kosong antar cetakan tiket (mencegah terbuangnya kertas thermal sepanjang 5 CM).
                 </p>
               </div>
             </div>
+          </div>
 
-            {/* Split dashed divider line */}
-            <div className="border-t border-dashed border-slate-350 w-full my-4"></div>
-
-            {/* Body contents */}
-            <div className="w-full space-y-3.5">
-              <span className="text-[8.5px] text-slate-400 font-extrabold uppercase tracking-widest block">
-                NOMOR ANTREAN ANDA
-              </span>
-              
-              {/* LARGE QUEUE NUMBER - DIRECT (NO SPACES!) - e.g. A14 */}
-              <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight leading-none py-1">
-                A14
-              </h2>
-
-              {/* SERVICE NAME DISPLAY - CLEAN TEXT WITHOUT BACKGROUND PILLS (As requested!) */}
-              <div className="py-1 pt-1.5 font-extrabold text-[#000] uppercase tracking-wider" style={{ fontSize: "8px" }}>
-                PELAYANAN PELANGGAN
+          {/* SECTION 3: Web Bluetooth Connection */}
+          <div className="border-t border-gray-200 pt-5 space-y-4">
+            <h3 className="text-xs font-bold text-[#005B9C] uppercase tracking-wider">
+              3. Konektor Printer (Metode Bluetooth Direct)
+            </h3>
+            
+            <div className="bg-gray-50 p-4 border border-gray-200 rounded-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-gray-800 flex items-center space-x-1.5">
+                    <span className={`w-2 h-2 rounded-full ${bleConnected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+                    <span>Direct Web Bluetooth Kiosk Driver</span>
+                  </span>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Menghubungkan tab browser Kiosk langsung ke printer thermal fisik Anda lewat Bluetooth.</p>
+                </div>
+                
+                {bleConnected ? (
+                  <span className="text-[9px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded border border-emerald-300">
+                    TERSAMBUNG
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-bold px-2 py-0.5 bg-gray-150 text-gray-500 rounded border border-gray-300">
+                    TERPUTUS
+                  </span>
+                )}
               </div>
 
-              <div className="border-t border-dashed border-slate-350 w-full pt-1"></div>
+              {bleConnected ? (
+                <div className="bg-white border border-gray-220 p-3 rounded-lg flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[9px] text-gray-400 font-mono">Perangkat Tersambung:</p>
+                    <p className="text-xs font-bold text-gray-800 font-mono">
+                      {bleDeviceName || "Printer Thermal Bluetooth"}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={handleTestPrintBLE}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-3 py-1.5 rounded text-center cursor-pointer transition flex items-center space-x-1"
+                    >
+                      <span>🖨️</span>
+                      <span>Test Cetak Slip</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDisconnectBLE}
+                      className="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 font-bold text-[10px] px-3 py-1.5 rounded text-center cursor-pointer transition"
+                    >
+                      Putus Koneksi
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white border border-dashed border-gray-300 p-4 py-6 rounded-lg flex flex-col items-center justify-center text-center">
+                  <div className="bg-blue-50 border border-blue-200 p-2.5 rounded-full mb-2 text-[#005B9C]">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <h5 className="text-xs font-bold text-gray-700">Printer Belum Disambungkan</h5>
+                  <p className="text-[10px] text-gray-400 max-w-xs mt-0.5 leading-normal mb-3">
+                    Harap sandingkan tab browser Kiosk ke mesin printer thermal Anda untuk pencetakan langsung sekali klik.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={connecting}
+                    onClick={handleConnectBLE}
+                    className="bg-[#005B9C] hover:bg-blue-600 disabled:bg-slate-350 text-white font-bold text-xs py-2 px-4 rounded-lg shadow cursor-pointer transition flex items-center space-x-1.5"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${connecting ? 'animate-spin' : ''}`} />
+                    <span>{connecting ? 'Mencari Perangkat...' : '🔍 CARI & HUBUNGKAN PRINTER'}</span>
+                  </button>
+                </div>
+              )}
 
-              {/* Date & clock */}
-              <div 
-                className="text-slate-500 font-bold"
-                style={{ ...getDateTimeSizeStyle(dateTimeSize), ...getStyleObj(dateTimeStyle, "normal") }}
+              {bleError && (
+                <div className="bg-rose-50 border border-rose-250 rounded-lg p-2.5 text-[10px] font-bold text-rose-800">
+                  ⚠️ Error: {bleError}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-gray-100">
+            <button
+              type="submit"
+              className="bg-[#005B9C] hover:bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg text-xs uppercase tracking-wide shadow flex items-center space-x-1.5 cursor-pointer transition"
+              id="printer-save-submit"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Simpan Pengaturan</span>
+            </button>
+          </div>
+        </form>
+
+        {/* Live physical paper mock layout simulation (Preview) */}
+        <div className="lg:col-span-4 bg-gray-100 rounded-xl border border-gray-300 p-5 shadow-inner flex flex-col items-center" id="printer-mini-preview">
+          <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider text-center mb-4 block">🔴 Live Preview Tiket</span>
+          
+          <div className="w-full max-w-[240px] bg-white text-gray-900 border border-gray-300 p-4 shadow-md flex flex-col font-mono leading-tight select-none rounded">
+            
+            {/* Header section (Centered logo & title text) */}
+            <div className="text-center flex flex-col items-center">
+              {settings.showLogo !== false && (
+                <div 
+                  className="flex items-center justify-center mb-2"
+                  style={{ 
+                    width: settings.logoSize ? `${settings.logoSize}px` : "48px",
+                    height: settings.logoSize ? `${settings.logoSize}px` : "48px"
+                  }}
+                >
+                  {settings.logoType === "custom" && settings.customLogo ? (
+                    <img 
+                      src={settings.customLogo} 
+                      alt="Custom Logo" 
+                      style={{
+                        maxHeight: settings.logoSize ? `${settings.logoSize}px` : "48px",
+                        maxWidth: settings.logoSize ? `${settings.logoSize}px` : "48px",
+                        objectFit: "contain"
+                      }}
+                      className="grayscale contrast-125"
+                    />
+                  ) : (
+                    <div className="bg-[#005B9C] text-[#FFE600] rounded-lg p-1.5 w-full h-full flex items-center justify-center">
+                      <Bolt className="fill-current w-[80%] h-[80%]" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <h3 
+                className="font-bold text-slate-900 text-center w-full leading-snug"
+                style={{ fontSize: settings.sizeNamaInstansi ? `${settings.sizeNamaInstansi}px` : "14px" }}
               >
-                {(() => {
-                  const d = new Date();
-                  const dateStr = d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-                  const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-                  return `${dateStr} ${timeStr} WIB`;
-                })()}
-              </div>
-
-              {/* FOOTER CUSTOM TEXT */}
+                {settings.namaInstansi || 'PT PLN (Persero) UP3 Madiun'}
+              </h3>
               <p 
-                className="text-slate-650 px-2 leading-relaxed text-slate-705"
-                style={{ ...getFooterSizeStyle(footerSize), ...getStyleObj(footerStyle, "italic") }}
+                className="font-bold text-slate-800 text-center w-full mt-0.5"
+                style={{ fontSize: settings.sizeCabang ? `${settings.sizeCabang}px` : "11px" }}
               >
-                "{footerText.trim() || "Terima kasih atas kunjungan anda. Jauhi bahaya listrik demi keselamatan keluarga tercinta."}"
+                {settings.cabang || 'ULP Mantingan'}
               </p>
-
+              <p 
+                className="text-slate-600 font-sans text-center max-w-[180px] mx-auto mt-0.5 leading-snug"
+                style={{ fontSize: settings.sizeAlamat ? `${settings.sizeAlamat}px` : "8px" }}
+              >
+                {settings.alamat || 'Jl. Raya Mantingan, Ngawi, Jawa Timur'}
+              </p>
             </div>
 
+            <div className="my-2 border-b border-dashed border-gray-400"></div>
+
+            {/* Ticket core queue sequence information */}
+            <div className="text-center">
+              <p 
+                className="text-gray-550 font-bold font-sans uppercase tracking-wide text-center"
+                style={{ fontSize: settings.sizeTeksNomorAntrian ? `${settings.sizeTeksNomorAntrian}px` : "9px" }}
+              >
+                NOMOR ANTRIAN ANDA
+              </p>
+              <h1 
+                className="font-black text-black my-1 text-center font-mono"
+                style={{ fontSize: settings.sizeNomorAntrian ? `${settings.sizeNomorAntrian}px` : "40px", lineHeight: '1' }}
+              >
+                B-12
+              </h1>
+              <span 
+                className="inline-block border border-gray-400 font-bold px-1.5 py-0.2 text-black font-sans text-center"
+                style={{ fontSize: settings.sizeLayanan ? `${settings.sizeLayanan}px` : "10px" }}
+              >
+                TEST PRINT DIRECT
+              </span>
+            </div>
+
+            <div className="space-y-1 mt-3 text-slate-600 border-t border-gray-300 pt-2" style={{ fontSize: settings.sizeDateTime ? `${settings.sizeDateTime}px` : "8px" }}>
+              <div className="flex justify-between">
+                <span>Waktu Catat:</span>
+                <span>12:34:56 WIB</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Tanggal:</span>
+                <span>20 Juni 2026</span>
+              </div>
+            </div>
+
+            <div className="my-2 border-b border-dashed border-gray-400 font-sans"></div>
+
+            {/* Footer custom texts */}
+            <div className="text-center space-y-1">
+              <p 
+                className="font-bold text-slate-900 leading-normal"
+                style={{ fontSize: settings.sizeFooterSatu ? `${settings.sizeFooterSatu}px` : "8px" }}
+              >
+                {settings.footerSatu || 'Terima kasih atas kunjungan anda.'}
+              </p>
+              {settings.showFooterDua !== false && settings.footerDua && (
+                <p 
+                  className="text-slate-700 leading-normal font-medium"
+                  style={{ fontSize: settings.sizeFooterDua ? `${settings.sizeFooterDua}px` : "8px" }}
+                >
+                  {settings.footerDua}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-row items-center justify-center text-[10px] text-gray-500 space-x-1.5 max-w-[200px] text-center leading-normal">
+            <Info className="w-4 h-4 text-blue-500 shrink-0" />
+            <p>Setelan slip tiket di atas akan tercetak sama persis pada kertas thermal fisik Anda.</p>
           </div>
         </div>
-
       </div>
     </div>
   );

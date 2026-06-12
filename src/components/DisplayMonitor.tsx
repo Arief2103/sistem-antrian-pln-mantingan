@@ -827,103 +827,139 @@ export default function DisplayMonitor({
 
           {" "}
           {/* B. Stack of the 2 Calling Cards */}
-          <div className="flex-1 flex flex-col gap-3 justify-stretch animate-none">
+          <div className="flex-1 flex flex-col gap-4 justify-stretch animate-none">
             
             {/* Card 1: Category A - Layanan Administrasi (BLUE) */}
             <div
-              className="rounded-2xl border p-4 flex flex-col justify-between shadow-md transition-all duration-300 relative overflow-hidden flex-1 border-white/15"
-              style={{ minHeight: isFullscreen ? "180px" : "160px", backgroundColor: colorCardA }}
+              className="rounded-[2.5rem] border-4 p-5 flex flex-col justify-between shadow-2xl transition-all duration-300 relative overflow-hidden flex-1 border-white/10 text-center"
+              style={{ minHeight: isFullscreen ? "210px" : "180px", backgroundColor: colorCardA }}
               id="calling-card-prefix-a"
             >
-              {/* Top title bar */}
-              <div className="relative z-10 w-full">
+              <div className="flex flex-col items-center justify-center flex-1 w-full">
+                {/* Top title - Loket Name taken from name, not serviceName */}
                 <h3 
-                  className={`font-black uppercase tracking-wider text-white leading-tight ${
-                    isFullscreen ? "text-base md:text-lg xl:text-xl" : "text-xs md:text-sm"
-                  }`}
-                  style={settings.textSizeCardText ? { fontSize: `${settings.textSizeCardText}px` } : undefined}
+                  className="font-black uppercase tracking-wider text-white leading-tight"
+                  style={{
+                    fontSize: settings.textSizeCardHeader 
+                      ? `${settings.textSizeCardHeader}px` 
+                      : (isFullscreen ? "24px" : "18px"),
+                    color: settings.colorCardHeader || "#ffffff"
+                  }}
                 >
-                  {loketA?.serviceName || nameAntrianA}
+                  {lastCalledA ? lastCalledA.loketName || loketA?.name || (loketA as any)?.nama || "LOKET 1" : (loketA?.name || (loketA as any)?.nama || "LOKET 1")}
                 </h3>
-                <p 
-                  className={`uppercase font-mono tracking-widest text-[#CCE4F5] mt-1 font-bold ${
-                    isFullscreen ? "text-xs" : "text-[9px]"
-                  }`}
-                  style={settings.textSizeCardText ? { fontSize: `max(9px, ${settings.textSizeCardText - 4}px)` } : undefined}
-                >
-                  Nomor Antrean
-                </p>
-              </div>
 
-              {/* Big central queue number */}
-              <div className={isFullscreen ? "text-center py-2 lg:py-4" : "text-center py-1"}>
-                <span className={`font-black font-mono text-center block text-white tracking-widest ${
-                  isFullscreen ? "text-7xl xl:text-8xl 2xl:text-9xl py-1 md:py-2" : "text-6xl"
-                }`} style={{ textShadow: "0 2px 5px rgba(0,0,0,0.2)" }}>
+                {/* Subtitle: NOMOR ANTRIAN */}
+                <p 
+                  className="uppercase font-sans tracking-widest font-extrabold mt-2.5"
+                  style={{
+                    fontSize: settings.textSizeCardSubtitle 
+                      ? `${settings.textSizeCardSubtitle}px` 
+                      : (isFullscreen ? "13px" : "10px"),
+                    color: settings.colorCardSubtitle || "rgba(255,255,255,0.75)"
+                  }}
+                >
+                  NOMOR ANTRIAN
+                </p>
+
+                {/* Big central queue number */}
+                <span 
+                  className="font-black font-mono text-center block tracking-tight leading-none mt-3.5 select-none"
+                  style={{ 
+                    textShadow: "0 4px 8px rgba(0,0,0,0.15)",
+                    fontSize: settings.textSizeCardNumber 
+                      ? `${settings.textSizeCardNumber}px` 
+                      : (isFullscreen ? "110px" : "75px"),
+                    color: settings.colorCardNumber || "#ffffff"
+                  }}
+                >
                   {lastCalledA ? lastCalledA.formattedNumber : "A--"}
                 </span>
               </div>
 
-              {/* Card Footer with assigned counter name */}
+              {/* Line separator */}
+              <div className="w-full border-t border-white/20 mt-4 mb-3" />
+
+              {/* Card Footer with auto status */}
               <div 
-                className={`border-t border-[#CCE4F5]/20 pt-2 flex justify-between font-black uppercase text-white tracking-wider ${
-                  isFullscreen ? "text-sm md:text-base pt-3" : "text-[10px]"
-                }`}
-                style={settings.textSizeCardText ? { fontSize: `max(10px, ${settings.textSizeCardText - 2}px)` } : undefined}
+                className="font-black uppercase tracking-wider text-center"
+                style={{
+                  fontSize: settings.textSizeCardStatus 
+                    ? `${settings.textSizeCardStatus}px` 
+                    : (isFullscreen ? "18px" : "14px"),
+                  color: currentTicketA 
+                    ? (settings.colorCardStatusCalling || settings.colorCardStatus || "#facc15") 
+                    : (settings.colorCardStatusWaiting || settings.colorCardStatus || "rgba(255,255,255,0.85)")
+                }}
               >
-                <span>{lastCalledA ? lastCalledA.loketName || loketA?.name || "LOKET A" : (loketA?.name || "LOKET 1")}</span>
-                <span className={currentTicketA ? "text-amber-200" : "text-sky-200"}>
-                  {currentTicketA ? "SEDANG DIPANGGIL" : "MENUNGGU"}
-                </span>
+                {currentTicketA ? "SEDANG DIPANGGIL" : "MENUNGGU"}
               </div>
             </div>
 
             {/* Card 2: Category B - Layanan Teknis / Perizinan (GREEN) */}
             <div
-              className="rounded-2xl border p-4 flex flex-col justify-between shadow-md transition-all duration-300 relative overflow-hidden flex-1 border-white/15"
-              style={{ minHeight: isFullscreen ? "180px" : "160px", backgroundColor: colorCardB }}
+              className="rounded-[2.5rem] border-4 p-5 flex flex-col justify-between shadow-2xl transition-all duration-300 relative overflow-hidden flex-1 border-white/10 text-center"
+              style={{ minHeight: isFullscreen ? "210px" : "180px", backgroundColor: colorCardB }}
               id="calling-card-prefix-b"
             >
-              {/* Top title bar */}
-              <div className="relative z-10 w-full">
+              <div className="flex flex-col items-center justify-center flex-1 w-full">
+                {/* Top title - Loket Name taken from name, not serviceName */}
                 <h3 
-                  className={`font-black uppercase tracking-wider text-white leading-tight ${
-                    isFullscreen ? "text-base md:text-lg xl:text-xl" : "text-xs md:text-sm"
-                  }`}
-                  style={settings.textSizeCardText ? { fontSize: `${settings.textSizeCardText}px` } : undefined}
+                  className="font-black uppercase tracking-wider text-white leading-tight"
+                  style={{
+                    fontSize: settings.textSizeCardHeader 
+                      ? `${settings.textSizeCardHeader}px` 
+                      : (isFullscreen ? "24px" : "18px"),
+                    color: settings.colorCardHeader || "#ffffff"
+                  }}
                 >
-                  {loketB?.serviceName || nameAntrianB}
+                  {lastCalledB ? lastCalledB.loketName || loketB?.name || (loketB as any)?.nama || "LOKET P2TL" : (loketB?.name || (loketB as any)?.nama || "LOKET P2TL")}
                 </h3>
-                <p 
-                  className={`uppercase font-mono tracking-widest text-[#D1FAE5] mt-1 font-bold ${
-                    isFullscreen ? "text-xs" : "text-[9px]"
-                  }`}
-                  style={settings.textSizeCardText ? { fontSize: `max(9px, ${settings.textSizeCardText - 4}px)` } : undefined}
-                >
-                  Nomor Antrean
-                </p>
-              </div>
 
-              {/* Big central queue number */}
-              <div className={isFullscreen ? "text-center py-2 lg:py-4" : "text-center py-1"}>
-                <span className={`font-black font-mono text-center block text-white tracking-widest ${
-                  isFullscreen ? "text-7xl xl:text-8xl 2xl:text-9xl py-1 md:py-2" : "text-6xl"
-                }`} style={{ textShadow: "0 2px 5px rgba(0,0,0,0.2)" }}>
+                {/* Subtitle: NOMOR ANTRIAN */}
+                <p 
+                  className="uppercase font-sans tracking-widest font-extrabold mt-2.5"
+                  style={{
+                    fontSize: settings.textSizeCardSubtitle 
+                      ? `${settings.textSizeCardSubtitle}px` 
+                      : (isFullscreen ? "13px" : "10px"),
+                    color: settings.colorCardSubtitle || "rgba(255,255,255,0.75)"
+                    }}
+                >
+                  NOMOR ANTRIAN
+                </p>
+
+                {/* Big central queue number */}
+                <span 
+                  className="font-black font-mono text-center block tracking-tight leading-none mt-3.5 select-none"
+                  style={{ 
+                    textShadow: "0 4px 8px rgba(0,0,0,0.15)",
+                    fontSize: settings.textSizeCardNumber 
+                      ? `${settings.textSizeCardNumber}px` 
+                      : (isFullscreen ? "110px" : "75px"),
+                    color: settings.colorCardNumber || "#ffffff"
+                  }}
+                >
                   {lastCalledB ? lastCalledB.formattedNumber : "B--"}
                 </span>
               </div>
 
-              {/* Card Footer with assigned counter name */}
+              {/* Line separator */}
+              <div className="w-full border-t border-white/20 mt-4 mb-3" />
+
+              {/* Card Footer with auto status */}
               <div 
-                className={`border-t border-[#D1FAE5]/20 pt-2 flex justify-between font-black uppercase text-white tracking-wider ${
-                  isFullscreen ? "text-sm md:text-base pt-3" : "text-[10px]"
-                }`}
-                style={settings.textSizeCardText ? { fontSize: `max(10px, ${settings.textSizeCardText - 2}px)` } : undefined}
+                className="font-black uppercase tracking-wider text-center"
+                style={{
+                  fontSize: settings.textSizeCardStatus 
+                    ? `${settings.textSizeCardStatus}px` 
+                    : (isFullscreen ? "18px" : "14px"),
+                  color: currentTicketB 
+                    ? (settings.colorCardStatusCalling || settings.colorCardStatus || "#facc15") 
+                    : (settings.colorCardStatusWaiting || settings.colorCardStatus || "rgba(255,255,255,0.85)")
+                }}
               >
-                <span>{lastCalledB ? lastCalledB.loketName || loketB?.name || "LOKET B" : (loketB?.name || "LOKET P2TL")}</span>
-                <span className={currentTicketB ? "text-amber-200" : "text-emerald-200"}>
-                  {currentTicketB ? "SEDANG DIPANGGIL" : "MENUNGGU"}
-                </span>
+                {currentTicketB ? "SEDANG DIPANGGIL" : "MENUNGGU"}
               </div>
             </div>
 
