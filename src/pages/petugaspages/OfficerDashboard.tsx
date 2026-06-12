@@ -312,7 +312,7 @@ export default function OfficerDashboard({
                           <input
                             type="text"
                             maxLength={12}
-                            placeholder="Contoh: 512345678901"
+                            placeholder="Masukkan ID Pelanggan..."
                             value={custIdPel}
                             onChange={(e) => setCustIdPel(e.target.value.replace(/\D/g, ""))}
                             className="w-full bg-white border-2 border-slate-200 text-xs font-mono font-bold rounded-xl p-3 text-slate-800 focus:outline-none focus:border-[#00A19D] focus:ring-2 focus:ring-teal-100 transition-all duration-150 shadow-sm"
@@ -326,7 +326,7 @@ export default function OfficerDashboard({
                           </label>
                           <input
                             type="text"
-                            placeholder="Contoh: Ahmad Budiman"
+                            placeholder="Masukkan Nama..."
                             value={custNama}
                             onChange={(e) => setCustNama(e.target.value)}
                             className="w-full bg-white border-2 border-slate-200 text-xs font-bold rounded-xl p-3 text-slate-800 focus:outline-none focus:border-[#00A19D] focus:ring-2 focus:ring-teal-100 transition-all duration-150 shadow-sm"
@@ -340,7 +340,7 @@ export default function OfficerDashboard({
                           </label>
                           <input
                             type="text"
-                            placeholder="Masukan Alamat"
+                            placeholder="Masukan Alamat..."
                             value={custAlamat}
                             onChange={(e) => setCustAlamat(e.target.value)}
                             className="w-full bg-white border-2 border-slate-200 text-xs font-semibold rounded-xl p-3 text-slate-800 focus:outline-none focus:border-[#00A19D] focus:ring-2 focus:ring-teal-100 transition-all duration-150 shadow-sm"
@@ -354,7 +354,7 @@ export default function OfficerDashboard({
                           </label>
                           <input
                             type="tel"
-                            placeholder="Contoh: 081234567890"
+                            placeholder="Masukkan No Telepon..."
                             value={custHp}
                             onChange={(e) => setCustHp(e.target.value)}
                             className="w-full bg-white border-2 border-slate-200 text-xs font-mono font-bold rounded-xl p-3 text-slate-800 focus:outline-none focus:border-[#00A19D] focus:ring-2 focus:ring-teal-100 transition-all duration-150 shadow-sm"
@@ -496,8 +496,8 @@ export default function OfficerDashboard({
                                   <h4 className="font-extrabold text-sm sm:text-base text-white tracking-tight leading-tight">
                                     {cat.serviceName}
                                   </h4>
-                                  <div className="flex flex-wrap items-center gap-1.5 text-[9px] text-white/85 tracking-wide uppercase font-bold font-mono">
-                                    <span>PREFIKS KODE: {cat.prefix}</span>
+                                  <div className="flex flex-wrap items-center gap-1.5 text-[17px] text-white/85 tracking-wide uppercase font-bold font-mono">
+                                    <span>KODE: {cat.prefix}</span>
                                   </div>
                                 </div>
                               </div>
@@ -518,10 +518,7 @@ export default function OfficerDashboard({
 
                               {/* 3. Action Button Zone - Huge, high-padding touch targets */}
                               <div className="space-y-2">
-                                <p className="text-[9px] text-white/80 text-center flex items-center justify-center gap-1 font-mono uppercase tracking-wider">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                  Aman dari Salah Pemencetan
-                                </p>
+                                
                                 <button
                                   onClick={() => handleAddNewTicket(cat.prefix, cat.serviceName)}
                                   className={`${buttonStyle} w-full py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 duration-100 cursor-pointer`}
@@ -560,7 +557,7 @@ export default function OfficerDashboard({
               </button>
 
               <span className="text-[11px] font-bold tracking-widest text-slate-400 uppercase select-none">
-                Panel Panggilan Antrean PLN ULP Mantingan
+                Panel Panggilan Antrian PLN ULP Mantingan
               </span>
             </div>
 
@@ -804,7 +801,7 @@ export default function OfficerDashboard({
                               {completedOrSkippedPrefixQueues.length === 0 ? (
                                 <div className="py-6 text-center text-slate-400 italic text-xs flex flex-col items-center justify-center gap-2">
                                   <Inbox className="w-5 h-5 text-slate-300 mx-auto" />
-                                  <p className="text-[9px] text-slate-400 font-medium">Belum ada antrean selesai/dilewati hari ini.</p>
+                                  <p className="text-[9px] text-slate-400 font-medium">Belum ada antrean hari ini.</p>
                                 </div>
                               ) : (
                                 completedOrSkippedPrefixQueues.map((item) => (
