@@ -70,16 +70,28 @@ export default function LoginScreen({ usersList, onLoginSuccess, onSelectDisplay
   };
 
   return (
-    <div className="h-screen flex items-center justify-center bg-slate-50 px-4"id="login-portal-card">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden" id="login-frame">
+    <div 
+      className="h-screen w-full flex items-center justify-center bg-[#0d1e2d] bg-center bg-no-repeat relative px-4"
+      style={{ backgroundImage: "url('/kantor-new.jpeg')", backgroundSize: "100% 100%" }}
+      id="login-portal-card"
+    >
+      {/* Dark premium overlay with backdrop blur to ensure high contrast & elegant layout */}
+      <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px]" />
+
+      <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-white/40 overflow-hidden relative z-10" id="login-frame">
         
         {/* Banner with PLN corporate color theme */}
-        <div className="bg-gradient-to-r from-sky-800 to-sky-950 p-8 text-white relative">
-          
-
-          
-          <h2 className="text-xl font-bold uppercase tracking-tight">Sistem Antrian Pelanggan</h2>
-          <p className="text-xs text-sky-200 mt-1">PT PLN (Persero) ULP Mantingan</p>
+        <div className="bg-gradient-to-r from-sky-800 to-sky-950 p-8 text-white flex items-center gap-4 relative">
+          <img 
+            src="/logo-pln.png" 
+            alt="PLN Logo" 
+            className="w-11 h-16 object-contain shrink-0" 
+            referrerPolicy="no-referrer"
+          />
+          <div>
+            <h2 className="text-lg font-bold uppercase tracking-tight leading-tight">Sistem Antrian Pelanggan</h2>
+            <p className="text-xs text-sky-200 mt-1 font-semibold">PT PLN (Persero) ULP Mantingan</p>
+          </div>
         </div>
 
         <form onSubmit={handleLogin} className="p-8 space-y-5" id="login-form">
@@ -128,55 +140,7 @@ export default function LoginScreen({ usersList, onLoginSuccess, onSelectDisplay
             <LogIn className="w-4 h-4" /> Masuk ke Dashboard
           </button>
 
-          {/* Quick Demo Assist Links (Indonesian Instruction) */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100/50 space-y-3" id="credential-suggestions">
-            <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400 block">Login Cepat</span>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickFill("admin")}
-                className="text-left p-2 rounded-xl bg-white hover:bg-sky-50 text-slate-700 hover:text-sky-950 border border-slate-200 transition-all text-[11px]"
-              >
-                <div className="font-bold text-sky-700">Administrator</div>
-                <div className="text-[9px] text-slate-400">admin / plnmantingan</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickFill("petugas")}
-                className="text-left p-2 rounded-xl bg-white hover:bg-sky-50 text-slate-700 hover:text-sky-950 border border-slate-200 transition-all text-[11px]"
-              >
-                <div className="font-bold text-violet-700 font-semibold text-xs leading-none mb-0.5">Petugas Desk</div>
-                <div className="text-[9px] text-slate-400">petugas / plnmantingan</div>
-              </button>
-            </div>
-            
-            <button
-              type="button"
-              onClick={onSelectDisplayMode}
-              className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-[10px] rounded-xl flex items-center justify-center gap-1.5 text-center transition-all cursor-pointer shadow-sm border border-slate-700"
-            >
-              <Monitor className="w-3.5 h-3.5" /> LIHAT TAMPILAN MONITOR
-            </button>
-
-            {/* TV direct URL support block
-            <div className="p-3 bg-amber-50/75 rounded-2xl border border-amber-200 text-left space-y-1 mt-1" id="tv-direct-guidelines">
-              <div className="flex items-center gap-1.5 font-bold text-[10px] text-amber-800 uppercase tracking-wider leading-none">
-                <Cpu className="w-3.5 h-3.5 text-amber-650" />
-                <span>Link Khusus TV Lobby (Antisipasi Hang)</span>
-              </div>
-              <p className="text-[10px] leading-relaxed text-amber-900/95 font-sans font-medium">
-                Gunakan alamat ini pada browser Smart TV Anda agar **ringan, otomatis, & bebas macet**:
-              </p>
-              <div className="p-1.5 bg-white/90 rounded-lg text-center text-[10px] font-mono font-black select-all border border-amber-200/60 text-slate-950 break-all select-all">
-                {typeof window !== "undefined" ? `${window.location.origin}/?tv=1` : "domain-anda/?tv=1"}
-              </div>
-              <p className="text-[9px] text-amber-800/80 leading-normal">
-                💡 **Hemat RAM**: Versi ini menonaktifkan video decoder berat yang sering menyebabkan Smart TV TV Stick lag atau hang.
-              </p>
-            </div> */}
-          </div>
+          {/* Login Cepat details and display monitor buttons are removed as requested by the user */}
         </form>
 
       </div>

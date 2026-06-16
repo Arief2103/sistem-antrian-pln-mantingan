@@ -33,6 +33,15 @@ export const DEFAULT_MONITOR_SETTINGS: MonitorSettings = {
   layoutMode: "normal",
   videoVolume: 50,
   voiceVolume: 80,
+  colorCardStatusWaiting: "#ffffff",
+  colorCardStatusCalling: "#facc15",
+  colorCardStatusCompleted: "#34d399",
+  weatherRegion: "Ngawi",
+  textSizeWeather: 14,
+  textSizeRegion: 12,
+  colorWeatherText: "#f1f5f9", // slate-100
+  colorWeatherTemp: "#fbbf24", // amber-400
+  colorWeatherRegion: "#cbd5e1", // slate-300
   slideImages: [
     "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?q=80&w=1200&auto=format&fit=crop", // Ketenagalistrikan / Energy
     "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=1200&auto=format&fit=crop", // Office / Customer service
@@ -603,8 +612,8 @@ export default function App() {
   ) => {
     const voiceVolNormalized = voiceVolume / 100;
     const spokenNumber = convertNumberToIndonesianSpelling(number);
-    // Use lowercased prefix without triple-dots delay to speak "A satu" continuously
-    const textToSpeak = `Nomor antrean ${prefix.toLowerCase()} ${spokenNumber}, silakan menuju ke ${loketName}`;
+    // Use deep deliberative pauses before and after the ticket prefix and code for premium queue announcements
+    const textToSpeak = `Nomor antrean, ... ... ... ${prefix.toUpperCase()} ${spokenNumber}. ... ... ... Silakan menuju ke ${loketName}`;
 
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -632,7 +641,7 @@ export default function App() {
           window.speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(textToSpeak);
           utterance.lang = "id-ID";
-          utterance.rate = 0.85;
+          utterance.rate = 1.05;
           utterance.pitch = 1.05;
           utterance.volume = voiceVolNormalized;
 
@@ -651,7 +660,7 @@ export default function App() {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(textToSpeak);
         utterance.lang = "id-ID";
-        utterance.rate = 0.85;
+        utterance.rate = 1.05;
         utterance.pitch = 1.05;
         utterance.volume = voiceVolNormalized;
         window.speechSynthesis.speak(utterance);
@@ -865,7 +874,7 @@ export default function App() {
         </div>
       ) : !currentUser ? (
         // 1. Rendering Login screen when not authenticated
-        <div className="py-12" id="unauthenticated-view">        
+        <div className="h-screen w-screen overflow-hidden fixed inset-0 z-50 bg-[#0d1e2d]" id="unauthenticated-view">        
           <LoginScreen
             usersList={usersList}
             onLoginSuccess={handleLoginSuccess}

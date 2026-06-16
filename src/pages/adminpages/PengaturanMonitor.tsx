@@ -16,7 +16,8 @@ import {
   Volume1,
   Volume,
   VolumeX,
-  Play
+  Play,
+  CloudSun
 } from "lucide-react";
 import { saveVideoBlob, deleteVideoBlob } from "../../lib/VideoDB";
 
@@ -91,10 +92,10 @@ export default function PengaturanMonitor({
       // Speak Indonesian Text-To-Speech queue testing sample
       setTimeout(() => {
         if ("speechSynthesis" in window) {
-          const textToSpeak = "Nomor antrean a satu, silakan menuju ke Loket satu.";
+          const textToSpeak = "Nomor antrean, ... ... ... A satu. ... ... ... Silakan menuju ke Loket satu.";
           const utterance = new SpeechSynthesisUtterance(textToSpeak);
           utterance.lang = "id-ID";
-          utterance.rate = 0.85;
+          utterance.rate = 1.05;
           utterance.pitch = 1.05;
           utterance.volume = voiceVolNormalized;
 
@@ -549,13 +550,13 @@ export default function PengaturanMonitor({
                   </div>
                 </div>
 
-                {/* 4. Status "MENUNGGU" / "SEDANG DIPANGGIL" */}
+                {/* 4. Status "MENUNGGU" / "SEDANG DILAYANI" / "SELESAI" */}
                 <div className="space-y-3 bg-white p-3.5 rounded-lg border border-slate-200">
                   <span className="block text-xs font-black text-slate-800 border-b pb-1">4. STATUS ANTRIAN</span>
                   {renderFontSizeControl("Ukuran Font (px)", "textSizeCardStatus", 14)}
                   <div className="grid grid-cols-1 gap-2">
                     <div>
-                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Sedang Dipanggil</label>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Sedang Dilayani</label>
                       <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg p-1 shadow-inner">
                         <input
                           type="color"
@@ -581,6 +582,21 @@ export default function PengaturanMonitor({
                         />
                         <span className="text-[10px] font-mono font-bold text-slate-600">
                           {localSettings.colorCardStatusWaiting || "#ffffff"}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Selesai</label>
+                      <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg p-1 shadow-inner">
+                        <input
+                          type="color"
+                          name="colorCardStatusCompleted"
+                          value={localSettings.colorCardStatusCompleted || "#34d399"}
+                          onChange={handleMonitorInputChange}
+                          className="w-8 h-6 rounded cursor-pointer border-0"
+                        />
+                        <span className="text-[10px] font-mono font-bold text-slate-600">
+                          {localSettings.colorCardStatusCompleted || "#34d399"}
                         </span>
                       </div>
                     </div>
@@ -1086,6 +1102,108 @@ export default function PengaturanMonitor({
                   }}
                   className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer focus:outline-none"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Bagian 8: Setelan Widget Cuaca & Wilayah */}
+          <div className="bg-white rounded-lg border border-slate-200 p-5 space-y-4 shadow-sm" id="sec-weather-settings">
+            <div className="pb-2 border-b border-slate-200 flex items-center gap-2">
+              <CloudSun className="w-5 h-5 text-teal-600" />
+              <div>
+                <h4 className="text-xs font-bold tracking-wider text-slate-800 uppercase">
+                  8. Setelan Widget Cuaca & Wilayah
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-1 leading-normal">
+                  Kustomisasi nama wilayah, ukuran teks, serta paduan warna infografis cuaca di monitor display TV utama.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Kolom 1: Nama Wilayah & Ukuran Font */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nama Wilayah / Unit Layanan
+                  </label>
+                  <input
+                    type="text"
+                    name="weatherRegion"
+                    value={localSettings.weatherRegion !== undefined ? localSettings.weatherRegion : "Ngawi"}
+                    onChange={handleMonitorInputChange}
+                    placeholder="Contoh: Ngawi atau Mantingan"
+                    className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-lg p-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-500 transition-all font-sans"
+                  />
+                  <p className="text-[9.5px] text-slate-400 mt-1 leading-relaxed">
+                    Nama lokasi atau stasiun pemantau cuaca yang tertera di sebelah kanan baris cuaca (default: Ngawi).
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {renderFontSizeControl(
+                    "Ukuran Teks Cuaca",
+                    "textSizeWeather",
+                    14,
+                    "Font deskripsi cuaca (px)"
+                  )}
+                  {renderFontSizeControl(
+                    "Ukuran Teks Wilayah",
+                    "textSizeRegion",
+                    12,
+                    "Font nama wilayah (px)"
+                  )}
+                </div>
+              </div>
+
+              {/* Kolom 2: Setelan Warna */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1 leading-tight">Warna Teks Cuaca</label>
+                    <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-lg p-1.5 shadow-sm">
+                      <input
+                        type="color"
+                        name="colorWeatherText"
+                        value={localSettings.colorWeatherText || "#f1f5f9"}
+                        onChange={handleMonitorInputChange}
+                        className="w-8 h-8 rounded border-0 p-0 cursor-pointer overflow-hidden leading-none shrink-0"
+                      />
+                      <span className="text-[10px] font-mono font-bold text-slate-600">{localSettings.colorWeatherText || "#f1f5f9"}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1 leading-tight">Warna Suhu (°C)</label>
+                    <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-lg p-1.5 shadow-sm">
+                      <input
+                        type="color"
+                        name="colorWeatherTemp"
+                        value={localSettings.colorWeatherTemp || "#fbbf24"}
+                        onChange={handleMonitorInputChange}
+                        className="w-8 h-8 rounded border-0 p-0 cursor-pointer overflow-hidden leading-none shrink-0"
+                      />
+                      <span className="text-[10px] font-mono font-bold text-slate-600">{localSettings.colorWeatherTemp || "#fbbf24"}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 mb-1 leading-tight">Warna Wilayah</label>
+                    <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-lg p-1.5 shadow-sm">
+                      <input
+                        type="color"
+                        name="colorWeatherRegion"
+                        value={localSettings.colorWeatherRegion || "#cbd5e1"}
+                        onChange={handleMonitorInputChange}
+                        className="w-8 h-8 rounded border-0 p-0 cursor-pointer overflow-hidden leading-none shrink-0"
+                      />
+                      <span className="text-[10px] font-mono font-bold text-slate-600">{localSettings.colorWeatherRegion || "#cbd5e1"}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[9.5px] text-slate-500 leading-relaxed bg-slate-50 border border-slate-200/60 p-2.5 rounded-lg font-sans">
+                  💡 <strong>Info:</strong> Bagian cuaca menggunakan format modern transparan, berpadu sempurna dengan logo/waktu yang sejuk dan kontras tinggi. Klik tombol <strong>Simpan & Sinkronkan Pengaturan</strong> diatas untuk menerapkan perubahan.
+                </p>
               </div>
             </div>
           </div>

@@ -384,23 +384,7 @@ export default function OfficerDashboard({
                       )}
 
                       {/* Footer Actions inside form step */}
-                      <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-200 justify-center max-w-xl mx-auto w-full">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCustNama("");
-                            setCustIdPel("");
-                            setCustAlamat("");
-                            setCustHp("");
-                            setCustKeterangan("");
-                            setFormError(null);
-                            setRegistrasiStep("kategori");
-                          }}
-                          className="px-6 py-3.5 bg-white border-2 border-[#00A19D] hover:bg-teal-50/40 text-[#00A19D] font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95 duration-150 w-full sm:w-1/2"
-                        >
-                          Lewati Form <ArrowRight className="w-4 h-4 text-[#00A19D]" />
-                        </button>
-
+                      <div className="flex justify-center pt-4 border-t border-slate-200 max-w-xl mx-auto w-full">
                         <button
                           type="button"
                           onClick={() => {
@@ -411,7 +395,7 @@ export default function OfficerDashboard({
                               setRegistrasiStep("kategori");
                             }
                           }}
-                          className="px-6 py-3.5 bg-[#00A19D] hover:bg-teal-700 hover:shadow-lg active:scale-95 text-white font-extrabold text-xs rounded-xl border-2 border-teal-600 transition-all flex items-center justify-center gap-2 duration-150 w-full sm:w-1/2 cursor-pointer shadow-md"
+                          className="px-8 py-3.5 bg-[#00A19D] hover:bg-teal-700 hover:shadow-lg active:scale-95 text-white font-extrabold text-xs rounded-xl border-2 border-teal-600 transition-all flex items-center justify-center gap-2 duration-150 w-full sm:w-2/3 cursor-pointer shadow-md mx-auto"
                         >
                           Simpan & Buat Antrean <ArrowRight className="w-4 h-4 text-white" />
                         </button>

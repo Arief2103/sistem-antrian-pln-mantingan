@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { MonitorSettings, LoketItem, QueueItem } from "../types";
-import { Shield, Zap, Sparkles, Cpu, Image, Tv, Video } from "lucide-react";
+import { Shield, Zap, Sparkles, Cpu, Image, Tv, Video, Sun, Cloud, CloudRain, CloudLightning, CloudSun, CloudDrizzle, Thermometer } from "lucide-react";
 import { getVideoBlob } from "../lib/VideoDB";
 
 // Helper to spell Indonesian numbers dynamically and correctly (terbilang format)
@@ -163,6 +163,63 @@ export default function DisplayMonitor({
   const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
   const lastCalledId = useRef<string | null>(null);
   const spokenCalls = useRef<Set<string>>(new Set());
+
+  const [weatherState, setWeatherState] = useState<{ text: string; temp: number; code: number } | null>(null);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        // Coords for Mantingan, Ngawi, Jawa Timur: -7.3551, 111.1610
+        const res = await fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=-7.3551&longitude=111.1610&current=temperature_2m,weather_code&timezone=Asia%2FJakarta"
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.current) {
+            const temp = Math.round(data.current.temperature_2m);
+            const code = data.current.weather_code;
+            let text = "Berawan";
+            if (code === 0) text = "Cerah";
+            else if (code >= 1 && code <= 3) text = "Cerah Berawan";
+            else if (code === 45 || code === 48) text = "Kabut";
+            else if (code >= 51 && code <= 55) text = "Gerimis";
+            else if (code >= 61 && code <= 65) text = "Hujan Ringan";
+            else if (code >= 80 && code <= 82) text = "Hujan";
+            else if (code >= 95 && code <= 99) text = "Hujan Petir";
+            
+            setWeatherState({ text, temp, code });
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch BMKG weather details:", e);
+      }
+    };
+
+    fetchWeather();
+    const interval = setInterval(fetchWeather, 600000); // refresh weather every 10 min
+    return () => clearInterval(interval);
+  }, []);
+
+  const finalWeather = weatherState || { text: "Cerah Berawan", temp: 29, code: 2 };
+
+  const getWeatherIcon = (code: number) => {
+    if (code === 0) {
+      return <Sun className="w-4 h-4 text-amber-300 shrink-0" />;
+    } else if (code >= 1 && code <= 3) {
+      return <CloudSun className="w-4 h-4 text-slate-300 shrink-0" />;
+    } else if (code === 45 || code === 48) {
+      return <Cloud className="w-4 h-4 text-slate-400 shrink-0" />;
+    } else if (code >= 51 && code <= 55) {
+      return <CloudDrizzle className="w-4 h-4 text-blue-300 shrink-0" />;
+    } else if (code >= 61 && code <= 65) {
+      return <CloudRain className="w-4 h-4 text-blue-400 shrink-0" />;
+    } else if (code >= 80 && code <= 82) {
+      return <CloudRain className="w-4 h-4 text-blue-500 shrink-0" />;
+    } else if (code >= 95 && code <= 99) {
+      return <CloudLightning className="w-4 h-4 text-yellow-400 shrink-0" />;
+    }
+    return <Cloud className="w-4 h-4 text-slate-300 shrink-0" />;
+  };
 
   // Split ratio for Left (Video) and Right (Cards) columns
   const [layoutWidth, setLayoutWidth] = useState<number>(() => {
@@ -460,6 +517,39 @@ export default function DisplayMonitor({
 
   const loketA = loketList.find((l) => l.prefix === "A" && l.isActive) || loketList.find((l) => l.prefix === "A");
   const loketB = loketList.find((l) => l.prefix === "B" && l.isActive) || loketList.find((l) => l.prefix === "B");
+
+  const getStatusTextAndColorForPrefix = (prefix: "A" | "B") => {
+    const lastCalled = prefix === "A" ? lastCalledA : lastCalledB;
+
+    if (!lastCalled) {
+      return {
+        text: "MENUNGGU",
+        color: settings.colorCardStatusWaiting || settings.colorCardStatus || "rgba(255,255,255,0.85)"
+      };
+    }
+
+    const statusStr = lastCalled.status as string;
+
+    if (statusStr === "calling" || statusStr === "memanggil") {
+      return {
+        text: "SEDANG DILAYANI",
+        color: settings.colorCardStatusCalling || settings.colorCardStatus || "#facc15"
+      };
+    }
+
+    if (statusStr === "completed" || statusStr === "selesai") {
+      return {
+        text: "SELESAI",
+        color: settings.colorCardStatusCompleted || settings.colorCardStatus || "#34d399"
+      };
+    }
+
+    // Default fallback
+    return {
+      text: "MENUNGGU",
+      color: settings.colorCardStatusWaiting || settings.colorCardStatus || "rgba(255,255,255,0.85)"
+    };
+  };
 
   // Helper to parse multiple YouTube video IDs and construct playlist parameter
   const getEmbedUrlForPlaylist = () => {
@@ -806,22 +896,69 @@ export default function DisplayMonitor({
               {settings.textClockTitle || "JAM BUKA LAYANAN KAMI"}
             </div>
 
-            {/* Formatted Date & Day */}
-            <div 
-              className={`font-bold text-white/80 ${
-                isFullscreen ? "text-sm xl:text-base" : "text-xs"
-              }`}
-              style={{
-                ...(settings.textSizeDayDate ? { fontSize: `${settings.textSizeDayDate}px` } : {}),
-                ...(settings.colorDayDate ? { color: settings.colorDayDate } : {})
-              }}
-            >
-              {time.toLocaleDateString("id-ID", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
+            {/* Formatted Date & Day and Weather widget in clean BMKG style - unified background with watch */}
+            <div className="mt-2.5 flex flex-col items-center gap-1">
+              {/* Weather & Temp line (cuaca | Suhu) */}
+              <div 
+                className={`font-bold flex flex-wrap items-center justify-center gap-2 select-none ${
+                  isFullscreen ? "text-[13px] xl:text-[14px]" : "text-[11px]"
+                }`}
+                style={{
+                  ...(settings.textSizeWeather ? { fontSize: `${settings.textSizeWeather}px` } : {}),
+                }}
+              >
+                <div className="flex items-center gap-1.5">
+                  {getWeatherIcon(finalWeather.code)}
+                  <span 
+                    className="tracking-wide"
+                    style={{ color: settings.colorWeatherText || "#f1f5f9" }}
+                  >
+                    {finalWeather.text ? finalWeather.text.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : ""}
+                  </span>
+                </div>
+                
+                <span className="text-white/20 font-light select-none">|</span>
+                
+                <div className="flex items-center gap-0.5">
+                  <Thermometer className="w-4 h-4 shrink-0 transition-all" style={{ color: settings.colorWeatherTemp || "#fbbf24" }} />
+                  <span 
+                    className="font-black"
+                    style={{ color: settings.colorWeatherTemp || "#fbbf24" }}
+                  >
+                    {finalWeather.temp}°C
+                  </span>
+                </div>
+                
+                <span className="text-white/20 font-light select-none">|</span>
+                
+                <span 
+                  className="font-bold tracking-wide"
+                  style={{ 
+                    color: settings.colorWeatherRegion || "#cbd5e1",
+                    ...(settings.textSizeRegion ? { fontSize: `${settings.textSizeRegion}px` } : {}) 
+                  }}
+                >
+                  {settings.weatherRegion || "Ngawi"}
+                </span>
+              </div>
+
+              {/* Day & Date line */}
+              <div 
+                className={`font-medium text-slate-300 ${
+                  isFullscreen ? "text-sm xl:text-base" : "text-xs"
+                }`}
+                style={{
+                  ...(settings.textSizeDayDate ? { fontSize: `${settings.textSizeDayDate}px` } : {}),
+                  ...(settings.colorDayDate ? { color: settings.colorDayDate } : {})
+                }}
+              >
+                {time.toLocaleDateString("id-ID", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </div>
             </div>
           </div>
 
@@ -887,12 +1024,10 @@ export default function DisplayMonitor({
                   fontSize: settings.textSizeCardStatus 
                     ? `${settings.textSizeCardStatus}px` 
                     : (isFullscreen ? "18px" : "14px"),
-                  color: currentTicketA 
-                    ? (settings.colorCardStatusCalling || settings.colorCardStatus || "#facc15") 
-                    : (settings.colorCardStatusWaiting || settings.colorCardStatus || "rgba(255,255,255,0.85)")
+                  color: getStatusTextAndColorForPrefix("A").color
                 }}
               >
-                {currentTicketA ? "SEDANG DIPANGGIL" : "MENUNGGU"}
+                {getStatusTextAndColorForPrefix("A").text}
               </div>
             </div>
 
@@ -954,12 +1089,10 @@ export default function DisplayMonitor({
                   fontSize: settings.textSizeCardStatus 
                     ? `${settings.textSizeCardStatus}px` 
                     : (isFullscreen ? "18px" : "14px"),
-                  color: currentTicketB 
-                    ? (settings.colorCardStatusCalling || settings.colorCardStatus || "#facc15") 
-                    : (settings.colorCardStatusWaiting || settings.colorCardStatus || "rgba(255,255,255,0.85)")
+                  color: getStatusTextAndColorForPrefix("B").color
                 }}
               >
-                {currentTicketB ? "SEDANG DIPANGGIL" : "MENUNGGU"}
+                {getStatusTextAndColorForPrefix("B").text}
               </div>
             </div>
 

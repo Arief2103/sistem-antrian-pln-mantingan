@@ -127,6 +127,13 @@ export interface MonitorSettings {
   colorCardStatus?: string; // Color of card status text
   colorCardStatusCalling?: string; // Color of status when 'SEDANG DIPANGGIL'
   colorCardStatusWaiting?: string; // Color of status when 'MENUNGGU'
+  colorCardStatusCompleted?: string; // Color of status when 'SELESAI'
+  weatherRegion?: string; // Custom region text (e.g. "Ngawi" or "Mantingan")
+  textSizeWeather?: number; // Size of weather status text
+  textSizeRegion?: number; // Size of weather region/location text
+  colorWeatherText?: string; // Color code for weather text
+  colorWeatherTemp?: string; // Color code for temperature text
+  colorWeatherRegion?: string; // Color code for region text
 }
 
 // Backend Server Types
