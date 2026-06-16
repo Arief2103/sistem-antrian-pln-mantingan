@@ -122,17 +122,76 @@ export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings
     setTimeout(() => setSavedSuccess(false), 2500);
   };
 
+  // Helper to render MS Word-style font size selection and custom typing
+  const renderWordStyleFontSizeControl = (
+    label: string,
+    key: keyof PrinterSettings,
+    defaultValue: number,
+    min: number = 4,
+    max: number = 120
+  ) => {
+    const currentValue = settings[key] !== undefined ? Number(settings[key]) : defaultValue;
+    const presets = [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 44, 48, 54, 60, 64, 72, 80, 96, 100, 110, 120];
+
+    return (
+      <div className="bg-white p-3.5 rounded-lg border border-gray-200/80 shadow-2xs hover:shadow-xs transition duration-150 space-y-1.5 flex flex-col justify-between">
+        <span className="block text-xs font-bold text-gray-700 tracking-wide">{label}</span>
+        <div className="flex items-center gap-1.5 pt-0.5">
+          {/* Manual input */}
+          <input
+            type="number"
+            min={min}
+            max={max}
+            value={currentValue}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              setSettings((prev) => ({
+                ...prev,
+                [key]: isNaN(val) ? defaultValue : val,
+              }));
+            }}
+            className="w-16 bg-gray-50 border border-gray-300 hover:border-gray-400 focus:border-[#005B9C] focus:bg-white text-xs rounded-lg px-2 py-1.5 font-mono text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#005B9C] text-center animate-transition"
+          />
+          <span className="text-[11px] text-gray-400 font-medium select-none">px</span>
+          
+          <span className="text-gray-300 font-light select-none">|</span>
+
+          {/* Preset dropdown */}
+          <select
+            value={presets.includes(currentValue) ? currentValue : ""}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (val) {
+                setSettings((prev) => ({
+                  ...prev,
+                  [key]: val,
+                }));
+              }
+            }}
+            className="flex-1 min-w-[70px] bg-white border border-gray-300 hover:border-gray-450 text-xs rounded-lg px-2 py-1.5 text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#005B9C] shrink-0 cursor-pointer text-center"
+          >
+            {!presets.includes(currentValue) && (
+              <option value="">{currentValue} px (Kustom)</option>
+            )}
+            {presets.map((sz) => (
+              <option key={sz} value={sz}>
+                {sz} px
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-6 space-y-6 max-h-[calc(100vh-64px)] overflow-y-auto font-sans" id="admin-printer-settings">
       {/* Upper header */}
       <div className="border-b border-gray-200 pb-5">
         <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center space-x-2">
           <Printer className="w-5 h-5 text-[#005B9C]" />
-          <span>Pengaturan Tiket Printer Kiosk</span>
+          <span>Pengaturan Struk Tiket Printer</span>
         </h1>
-        <p className="text-xs text-gray-500 mt-1">
-          Atur teks kop surat, info cabang, alamat, catatan kaki, serta atur ukuran font pada slip antrian secara presisi.
-        </p>
       </div>
 
       {savedSuccess && (
@@ -273,214 +332,75 @@ export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings
               </div>
 
               {settings.showLogo && (
-                <div className="pt-3 border-t border-gray-200/60 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-600 mb-1">Tipe Logo</label>
-                    <select
-                      value={settings.logoType || "default"}
-                      onChange={(e) => setSettings({ ...settings, logoType: e.target.value as any })}
-                      className="w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#005B9C]"
-                    >
-                      <option value="default">Default PLN (⚡)</option>
-                      <option value="custom">Upload Logo Kustom (Gambar)</option>
-                    </select>
+                <div className="pt-3 border-t border-gray-200/60">
+                  <div className="max-w-md">
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Unggah Logo Instansi PLN</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-[11px] file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100 cursor-pointer"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1 leading-normal font-normal">
+                      Unggah logo instansi berformat PNG/JPG. Jika gambar logo tidak/belum diunggah, maka posisi logo pada cetakan tiket akan dibiarkan kosong secara otomatis (tanpa ikon cadangan).
+                    </p>
+                    {settings.customLogo && (
+                      <div className="flex items-center space-x-2 mt-2.5 bg-emerald-50 border border-emerald-200/60 rounded px-2.5 py-1.5 w-fit">
+                        <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                          <span>✓</span> Logo Tersimpan
+                        </span>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSettings(prev => ({ ...prev, customLogo: "" }))}
+                          className="text-[10px] text-rose-600 hover:text-rose-700 hover:underline font-bold cursor-pointer"
+                        >
+                          Hapus Logo
+                        </button>
+                      </div>
+                    )}
                   </div>
-
-                  {settings.logoType === "custom" && (
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-600 mb-1">Pilih File Logo</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        className="w-full text-xs text-gray-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 file:text-[#005B9C] hover:file:bg-blue-100 cursor-pointer"
-                      />
-                      {settings.customLogo && (
-                        <div className="flex items-center space-x-2 mt-1.5">
-                          <span className="text-[9px] text-emerald-600 font-semibold">✓ Gambar berhasil diunggah</span>
-                          <button
-                            type="button"
-                            onClick={() => setSettings(prev => ({ ...prev, customLogo: "" }))}
-                            className="text-[9px] text-rose-600 hover:underline font-medium cursor-pointer"
-                          >
-                            Hapus
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
               {/* Logo Size */}
               {settings.showLogo !== false && (
-                <div>
-                  <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                    <span>Ukuran Logo PLN</span>
-                    <span className="text-[#005B9C]">{settings.logoSize || 48} px</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="30"
-                    max="100"
-                    value={settings.logoSize || 48}
-                    onChange={(e) => setSettings({ ...settings, logoSize: parseInt(e.target.value) })}
-                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                  />
-                </div>
+                renderWordStyleFontSizeControl("Ukuran Logo PLN", "logoSize", 48, 10, 200)
               )}
 
               {/* Nama Instansi Font Size */}
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                  <span>Ukuran Font Nama Instansi</span>
-                  <span className="text-[#005B9C]">{settings.sizeNamaInstansi || 14} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="10"
-                  max="32"
-                  value={settings.sizeNamaInstansi || 14}
-                  onChange={(e) => setSettings({ ...settings, sizeNamaInstansi: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                />
-              </div>
+              {renderWordStyleFontSizeControl("Ukuran Font Nama Instansi", "sizeNamaInstansi", 14, 4, 100)}
 
               {/* Cabang/Subheader Font Size */}
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                  <span>Ukuran Font Unit Pelaksana</span>
-                  <span className="text-[#005B9C]">{settings.sizeCabang || 11} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="8"
-                  max="24"
-                  value={settings.sizeCabang || 11}
-                  onChange={(e) => setSettings({ ...settings, sizeCabang: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                />
-              </div>
+              {renderWordStyleFontSizeControl("Ukuran Font Unit Pelaksana", "sizeCabang", 11, 4, 100)}
 
               {/* Alamat Font Size */}
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                  <span>Ukuran Font Alamat Slip</span>
-                  <span className="text-[#005B9C]">{settings.sizeAlamat || 8} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="6"
-                  max="20"
-                  value={settings.sizeAlamat || 8}
-                  onChange={(e) => setSettings({ ...settings, sizeAlamat: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                />
-              </div>
+              {renderWordStyleFontSizeControl("Ukuran Font Alamat Slip", "sizeAlamat", 8, 4, 100)}
 
               {/* Teks No Antrean Font Size */}
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                  <span>Ukuran Teks "Nomor Antrian Anda"</span>
-                  <span className="text-[#005B9C]">{settings.sizeTeksNomorAntrian || 9} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="8"
-                  max="20"
-                  value={settings.sizeTeksNomorAntrian || 9}
-                  onChange={(e) => setSettings({ ...settings, sizeTeksNomorAntrian: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                />
-              </div>
+              {renderWordStyleFontSizeControl('Ukuran Teks "Nomor Antrian Anda"', "sizeTeksNomorAntrian", 9, 4, 100)}
 
               {/* Nilai Nomor Antrean Font Size */}
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                  <span>Ukuran Font Nomor Antrian (B-12)</span>
-                  <span className="text-[#005B9C]">{settings.sizeNomorAntrian || 40} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="24"
-                  max="64"
-                  value={settings.sizeNomorAntrian || 40}
-                  onChange={(e) => setSettings({ ...settings, sizeNomorAntrian: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                />
-              </div>
+              {renderWordStyleFontSizeControl("Ukuran Font Nomor Antrian (B-12)", "sizeNomorAntrian", 40, 4, 200)}
 
               {/* Layanan Font Size */}
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                  <span>Ukuran Font Nama Layanan</span>
-                  <span className="text-[#005B9C]">{settings.sizeLayanan || 10} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="8"
-                  max="20"
-                  value={settings.sizeLayanan || 10}
-                  onChange={(e) => setSettings({ ...settings, sizeLayanan: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                />
-              </div>
+              {renderWordStyleFontSizeControl("Ukuran Font Nama Layanan", "sizeLayanan", 10, 4, 100)}
 
               {/* Tanggal & Waktu Font Size */}
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                  <span>Ukuran Font Waktu Cetak</span>
-                  <span className="text-[#005B9C]">{settings.sizeDateTime || 8} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="6"
-                  max="18"
-                  value={settings.sizeDateTime || 8}
-                  onChange={(e) => setSettings({ ...settings, sizeDateTime: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                />
-              </div>
+              {renderWordStyleFontSizeControl("Ukuran Font Waktu Cetak", "sizeDateTime", 8, 4, 100)}
 
               {/* Kaki 1 Font Size */}
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                  <span>Ukuran Font Kaki 1</span>
-                  <span className="text-[#005B9C]">{settings.sizeFooterSatu || 8} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="6"
-                  max="18"
-                  value={settings.sizeFooterSatu || 8}
-                  onChange={(e) => setSettings({ ...settings, sizeFooterSatu: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                />
-              </div>
+              {renderWordStyleFontSizeControl("Ukuran Font Kaki 1", "sizeFooterSatu", 8, 4, 100)}
 
               {/* Kaki 2 Font Size */}
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-gray-600 mb-1">
-                  <span>Ukuran Font Kaki 2</span>
-                  <span className="text-[#005B9C]">{settings.sizeFooterDua || 8} px</span>
-                </div>
-                <input
-                  type="range"
-                  min="6"
-                  max="18"
-                  value={settings.sizeFooterDua || 8}
-                  onChange={(e) => setSettings({ ...settings, sizeFooterDua: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
-                />
-              </div>
+              {renderWordStyleFontSizeControl("Ukuran Font Kaki 2", "sizeFooterDua", 8, 4, 100)}
 
               {/* Trailing Feed Lines / Spacing Control */}
               <div className="md:col-span-2 bg-[#005B9C]/5 p-3 rounded-lg border border-[#005B9C]/10 mt-2">
                 <div className="flex justify-between text-[11px] font-semibold text-[#005B9C] mb-1.5">
                   <span className="flex items-center space-x-1.5">
-                    <span>✂️</span>
                     <span>Jarak Potong Kertas Antar Tiket (Baris Kosong)</span>
                   </span>
                   <span className="bg-blue-100 text-[#005B9C] px-2 py-0.5 rounded text-[10px] font-bold">
@@ -496,7 +416,7 @@ export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings
                   className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#005B9C]"
                 />
                 <p className="text-[10px] text-gray-500 mt-1 font-normal leading-normal">
-                  Atur slider ke <strong>0 atau 1 Baris</strong> untuk merapatkan jarak kosong antar cetakan tiket (mencegah terbuangnya kertas thermal sepanjang 5 CM).
+                  Atur slider ke <strong>0 atau 1 Baris</strong> untuk merapatkan jarak kosong antar cetakan tiket.
                 </p>
               </div>
             </div>
@@ -513,9 +433,8 @@ export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings
                 <div>
                   <span className="text-xs font-bold text-gray-800 flex items-center space-x-1.5">
                     <span className={`w-2 h-2 rounded-full ${bleConnected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-                    <span>Direct Web Bluetooth Kiosk Driver</span>
+                    <span>Direct Web Bluetooth Printer Thermal</span>
                   </span>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Menghubungkan tab browser Kiosk langsung ke printer thermal fisik Anda lewat Bluetooth.</p>
                 </div>
                 
                 {bleConnected ? (
@@ -563,7 +482,7 @@ export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings
                   </div>
                   <h5 className="text-xs font-bold text-gray-700">Printer Belum Disambungkan</h5>
                   <p className="text-[10px] text-gray-400 max-w-xs mt-0.5 leading-normal mb-3">
-                    Harap sandingkan tab browser Kiosk ke mesin printer thermal Anda untuk pencetakan langsung sekali klik.
+                    Harap sandingkan web ke mesin printer thermal Anda untuk pencetakan langsung sekali klik.
                   </p>
                   <button
                     type="button"
@@ -572,7 +491,7 @@ export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings
                     className="bg-[#005B9C] hover:bg-blue-600 disabled:bg-slate-350 text-white font-bold text-xs py-2 px-4 rounded-lg shadow cursor-pointer transition flex items-center space-x-1.5"
                   >
                     <RefreshCw className={`w-3 h-3 ${connecting ? 'animate-spin' : ''}`} />
-                    <span>{connecting ? 'Mencari Perangkat...' : '🔍 CARI & HUBUNGKAN PRINTER'}</span>
+                    <span>{connecting ? 'Mencari Perangkat...' : 'CARI & HUBUNGKAN PRINTER'}</span>
                   </button>
                 </div>
               )}
@@ -599,13 +518,13 @@ export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings
 
         {/* Live physical paper mock layout simulation (Preview) */}
         <div className="lg:col-span-4 bg-gray-100 rounded-xl border border-gray-300 p-5 shadow-inner flex flex-col items-center" id="printer-mini-preview">
-          <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider text-center mb-4 block">🔴 Live Preview Tiket</span>
+          <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider text-center mb-4 block">Preview Tiket</span>
           
           <div className="w-full max-w-[240px] bg-white text-gray-900 border border-gray-300 p-4 shadow-md flex flex-col font-mono leading-tight select-none rounded">
             
             {/* Header section (Centered logo & title text) */}
             <div className="text-center flex flex-col items-center">
-              {settings.showLogo !== false && (
+              {settings.showLogo !== false && settings.customLogo && (
                 <div 
                   className="flex items-center justify-center mb-2"
                   style={{ 
@@ -613,22 +532,15 @@ export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings
                     height: settings.logoSize ? `${settings.logoSize}px` : "48px"
                   }}
                 >
-                  {settings.logoType === "custom" && settings.customLogo ? (
-                    <img 
-                      src={settings.customLogo} 
-                      alt="Custom Logo" 
-                      style={{
-                        maxHeight: settings.logoSize ? `${settings.logoSize}px` : "48px",
-                        maxWidth: settings.logoSize ? `${settings.logoSize}px` : "48px",
-                        objectFit: "contain"
-                      }}
-                      className="grayscale contrast-125"
-                    />
-                  ) : (
-                    <div className="bg-[#005B9C] text-[#FFE600] rounded-lg p-1.5 w-full h-full flex items-center justify-center">
-                      <Bolt className="fill-current w-[80%] h-[80%]" />
-                    </div>
-                  )}
+                  <img 
+                    src={settings.customLogo} 
+                    alt="Custom Logo" 
+                    style={{
+                      maxHeight: settings.logoSize ? `${settings.logoSize}px` : "48px",
+                      maxWidth: settings.logoSize ? `${settings.logoSize}px` : "48px",
+                      objectFit: "contain"
+                    }}
+                  />
                 </div>
               )}
 
@@ -708,10 +620,6 @@ export default function PengaturanPrinter({ printSettings, onUpdatePrintSettings
             </div>
           </div>
 
-          <div className="mt-6 flex flex-row items-center justify-center text-[10px] text-gray-500 space-x-1.5 max-w-[200px] text-center leading-normal">
-            <Info className="w-4 h-4 text-blue-500 shrink-0" />
-            <p>Setelan slip tiket di atas akan tercetak sama persis pada kertas thermal fisik Anda.</p>
-          </div>
         </div>
       </div>
     </div>

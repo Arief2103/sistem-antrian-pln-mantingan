@@ -264,19 +264,7 @@ export default function PengaturanMonitor({
     <div className="space-y-6" id="panel-monitor-tab">
 
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        {/* Bagian 8: Button Simpan Permanen */}
-          <div
-            className="bg-slate-50 border border-slate-200 rounded-lg p-5 flex justify-center items-center"
-            id="sec-save-monitor"
-          >
-            <button
-              type="button"
-              onClick={handleSaveSettings}
-              className="w-full sm:w-auto px-6 py-4 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition duration-150 shadow shrink-0 cursor-pointer"
-            >
-              Simpan Setelan Monitor
-            </button>
-          </div>
+        
         <div className="space-y-6">
 
           {/* Bagian 1: Header Atas TV */}
@@ -1109,7 +1097,6 @@ export default function PengaturanMonitor({
           {/* Bagian 8: Setelan Widget Cuaca & Wilayah */}
           <div className="bg-white rounded-lg border border-slate-200 p-5 space-y-4 shadow-sm" id="sec-weather-settings">
             <div className="pb-2 border-b border-slate-200 flex items-center gap-2">
-              <CloudSun className="w-5 h-5 text-teal-600" />
               <div>
                 <h4 className="text-xs font-bold tracking-wider text-slate-800 uppercase">
                   8. Setelan Widget Cuaca & Wilayah
@@ -1136,7 +1123,7 @@ export default function PengaturanMonitor({
                     className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-lg p-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-500 transition-all font-sans"
                   />
                   <p className="text-[9.5px] text-slate-400 mt-1 leading-relaxed">
-                    Nama lokasi atau stasiun pemantau cuaca yang tertera di sebelah kanan baris cuaca (default: Ngawi).
+                    Nama lokasi atau stasiun pemantau cuaca yang tertera di sebelah kanan baris cuaca.
                   </p>
                 </div>
 
@@ -1201,9 +1188,20 @@ export default function PengaturanMonitor({
                     </div>
                   </div>
                 </div>
-                <p className="text-[9.5px] text-slate-500 leading-relaxed bg-slate-50 border border-slate-200/60 p-2.5 rounded-lg font-sans">
-                  💡 <strong>Info:</strong> Bagian cuaca menggunakan format modern transparan, berpadu sempurna dengan logo/waktu yang sejuk dan kontras tinggi. Klik tombol <strong>Simpan & Sinkronkan Pengaturan</strong> diatas untuk menerapkan perubahan.
-                </p>
+              </div>
+
+              {/* Bagian 8: Button Simpan Permanen */}
+              <div
+                className=""
+                id="sec-save-monitor"
+              >
+                <button
+                  type="button"
+                  onClick={handleSaveSettings}
+                  className="w-full sm:w-auto px-6 py-4 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-bold text-xs items-center uppercase tracking-wider rounded-lg transition duration-150 shadow shrink-0 cursor-pointer"
+                >
+                  Simpan Setelan Monitor
+                </button>
               </div>
             </div>
           </div>

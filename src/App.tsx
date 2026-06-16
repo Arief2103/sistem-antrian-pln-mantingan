@@ -939,9 +939,9 @@ export default function App() {
           {/* Footer branding illustrated for non-admin views */}
           {currentUser.role !== "admin" && (
             <footer className="bg-white border-t border-slate-100 mt-12 py-6 text-center text-slate-400 text-xs shrink-0" id="global-footer">
-              <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-                <p>© 2026 PLN ULP Mantingan. Hak Cipta Dilindungi Undang-Undang.</p>
-                <p className="text-[10px] text-slate-400">Sistem Informasi Manajemen Antrean Terpadu</p>
+              <div className="max-w-7xl mx-auto px-4 items-center justify-between gap-4">
+                <p>© 2026 PT PLN (Persero) ULP Mantingan</p>
+                {/* <p className="text-[10px] text-slate-400">Sistem Informasi Manajemen Antrean Terpadu</p> */}
               </div>
             </footer>
           )}

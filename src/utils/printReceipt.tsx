@@ -170,7 +170,8 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
         }
 
         html, body {
-          height: max-content;
+          height: auto;
+          min-height: 0;
           overflow: hidden;
         }
 
@@ -178,7 +179,7 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
           width: ${contentWidth};
           max-width: 100%;
           margin: 0 auto;
-          padding: 3mm 1mm;
+          padding: 2mm 1mm 0mm 1mm;
           background-color: #fff;
           color: #000;
           font-family: Arial, Helvetica, sans-serif, system-ui;
@@ -189,6 +190,18 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
           print-color-adjust: exact;
         }
 
+        @media print {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
+          body {
+            padding: 2mm 1mm 0mm 1mm !important;
+          }
+        }
+
         /* Elements styling */
         .header-container {
           display: flex;
@@ -197,7 +210,7 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
           justify-content: center;
           text-align: center;
           width: 100%;
-          margin-bottom: 2mm;
+          margin-bottom: 1.5mm;
         }
 
         .logo-box {
@@ -235,7 +248,7 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
 
         .divider {
           border-top: 1px dashed #000;
-          margin: 2.5mm 0;
+          margin: 1.5mm 0;
           height: 0;
           width: 100%;
         }
@@ -244,33 +257,33 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
           color: #444;
           font-weight: bold;
           letter-spacing: 0.5px;
-          margin-bottom: 2px;
+          margin-bottom: 1.5px;
         }
 
         .ticket-number {
           font-weight: 900;
           line-height: 1;
-          margin: 2mm 0;
+          margin: 1.5mm 0;
         }
 
         .service-badge {
           font-weight: bold;
           color: #000;
           display: block;
-          margin-top: 1mm;
-          margin-bottom: 1mm;
+          margin-top: 0.8mm;
+          margin-bottom: 0.8mm;
           width: 100%;
         }
 
         .timestamp-box {
           text-align: center;
-          margin-top: 2.5mm;
+          margin-top: 1.5mm;
           font-weight: bold;
         }
 
         .footer-message {
           line-height: 1.35;
-          margin-top: 3mm;
+          margin-top: 1.5mm;
           font-weight: normal;
         }
       </style>
@@ -278,17 +291,11 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
     <body onload="window.focus(); setTimeout(function(){ window.print(); }, 200);">
 
       <div class="header-container">
-        ${safeSettings.showLogo !== false ? (
-          safeSettings.logoType === "custom" && safeSettings.customLogo ? `
+        ${safeSettings.showLogo !== false && safeSettings.customLogo ? `
           <div class="logo-box-wrapper" style="margin-bottom: 2mm; display: flex; justify-content: center; align-items: center; width: 100%;">
-            <img src="${safeSettings.customLogo}" style="max-height: ${safeSettings.logoSize || 48}px; max-width: ${safeSettings.logoSize || 48}px; object-fit: contain; filter: grayscale(100%) contrast(200%);" />
+            <img src="${safeSettings.customLogo}" style="max-height: ${safeSettings.logoSize || 48}px; max-width: ${safeSettings.logoSize || 48}px; object-fit: contain;" />
           </div>
-          ` : `
-          <div class="logo-box" style="width: ${safeSettings.logoSize || 48}px; height: ${safeSettings.logoSize || 48}px;">
-            <span class="pln-thunderbolt">⚡</span>
-          </div>
-          `
-        ) : ""}
+        ` : ""}
         <div class="header-text-block">
           <div class="header-title" style="font-size: ${safeSettings.sizeNamaInstansi || 14}px;">
             ${safeSettings.namaInstansi || safeSettings.headerText || "PT PLN (Persero) UP3 Madiun"}
@@ -326,6 +333,8 @@ export function printThermalReceipt(item: QueueItem, printSettings: PrintSetting
         ${safeSettings.footerDua}
       </p>
       ` : ""}
+
+      ${Array.from({ length: safeSettings.feedLines !== undefined ? safeSettings.feedLines : 1 }).map(() => '<div style="height: 3mm; line-height: 1;">&nbsp;</div>').join('')}
 
     </body>
     </html>
