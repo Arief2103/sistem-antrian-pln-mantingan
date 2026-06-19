@@ -621,7 +621,7 @@ export default function DisplayMonitor({
           />
         ) : embedUrl ? (
           <iframe
-            className="absolute inset-0 w-full h-full pointer-events-none"
+            className="absolute inset-0 w-full h-full"
             src={embedUrl}
             title="PLN Corporate Media"
             allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
@@ -837,7 +837,7 @@ export default function DisplayMonitor({
                 if (embedUrl) {
                   return (
                     <iframe
-                      className="absolute inset-0 w-full h-full pointer-events-none rounded-xl"
+                      className="absolute inset-0 w-full h-full rounded-xl"
                       src={embedUrl}
                       title="PLN Corporate Media"
                       allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
